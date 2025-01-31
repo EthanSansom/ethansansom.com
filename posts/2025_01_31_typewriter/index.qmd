@@ -1,0 +1,16 @@
+---
+title: "typewriter"
+date: "2025-01-30"
+categories: ["package", "{rlang}", "meta-programming"]
+image: "typewriter_hex.png"
+smallimage: '<img src="posts/2025_01_31_typewriter/typewriter_small.png">'
+description: |
+  A type system for R inspired by the {typed} package. Enforce object and function
+  argument types with ease.
+summary: |
+  A type system for R inspired by the {typed} package. Enforce object and function
+  argument types with ease.
+---
+
+This is a sample post for the `{typewriter}` package.
+

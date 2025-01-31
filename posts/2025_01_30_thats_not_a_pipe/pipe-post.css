@@ -1,0 +1,11 @@
+:root {
+  --lightblue: #96BFE3;
+}
+
+body {
+  background-color: var(--lightblue);
+}
+
+h1 {
+  font-size: 1rem;
+}

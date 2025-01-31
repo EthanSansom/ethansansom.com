@@ -1,0 +1,58 @@
+---
+title: "That's not a `|>`, this is a `%>%`."
+date: "2025-01-30"
+categories: ["meta programming", "{rlang}", "{magrittr}"]
+image: "pipe.png"
+smallimage: '<img src="posts/2025_01_30_thats_not_a_pipe/pipe_small.png">'
+description: |
+  An article about pipes!
+summary: |
+  An article about pipes!
+---
+
+```{r inject-html-styling}
+#| echo = FALSE
+
+# NOTE: This is a hack. You cannot currently alter the theme of a single page on a website:
+# - https://forum.posit.co/t/separate-html-theme-on-single-page-within-a-website-in-quarto/156897/3
+#
+# So, instead we can use `htmltools::HTML` to render a given set of HTML here.
+#
+# We could do inline like this:
+#
+# htmltools::HTML(
+# "<style>
+# body {background-color: #96BFE3;}
+# </style>"
+# )
+#
+# Or we could insert it inline in the document. But the best option is to read
+# the external CSS and use `htmltools::HTML()` to inject it here.
+# - I've changed the background color and `h1` font size
+#
+# TODO: See https://github.com/r-lgbtq/rainbowr.org/blob/main/buddies.qmd and
+# `include-in-header` YAML parameter. That might be the way to do this instead...
+css <- readLines(here::here("posts", "2025_01_30_thats_not_a_pipe", "pipe-post.css"))
+htmltools::HTML(paste(c("<style>", css, "</style>"), collapse = "\n"))
+```
+
+
+```{r notes}
+#| echo = FALSE
+
+# "posts/30_01_2025_thats_not_a_pipe/pipe-post.scss"
+
+# Each start page should have:
+# - a long `description` and shorter `summary`
+# - a link to the main `image`
+# - `categories` which will allow us to filter posts
+```
+
+This is a sample post for an article about `|>` vs. `%>%`.
+
+```{r}
+#| echo = TRUE
+
+library(magrittr)
+"Wow" %>% print()
+```

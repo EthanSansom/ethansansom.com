@@ -1,0 +1,15 @@
+---
+title: "friendlyr"
+date: "2025-01-30"
+categories: ["package", "{rlang}", "{cli}"]
+image: "friendlyr_hex.png"
+smallimage: '<img src="posts/2025_01_31_friendlyr/friendlyr_small.png">'
+description: |
+  Functions to describe objects in a friendly (and Tidyverse-style-guide-compliant)
+  manner. Inspired by “{.obj_type_friendly {x}}” text interpolation in {cli}.
+summary: |
+  Functions to describe objects in a friendly (and Tidyverse-style-guide-compliant)
+  manner. Inspired by “{.obj_type_friendly {x}}” text interpolation in {cli}.
+---
+
+This is a sample post for the `{friendlyr}` package.
