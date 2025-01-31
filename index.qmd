@@ -98,15 +98,19 @@ d3 = require("d3");
 // Constants
 lightblue = "#96BFE3";
 offblack = "#1E1E1E";
+offwhite = "#FFFBFC";
 stroke_width = 0.25; // This is relative to the `viewBox` scale of the `svg`
 n_cols = 12;
 n_rows = 14;
 width = n_cols * 10;
 height = n_rows * 10;
 
+point_width = 2;
+point_height = 2;
+
 // Prevents the right and bottom grid lines from being clipped
-margin_bottom = stroke_width;
-margin_right = stroke_width;
+margin_bottom = stroke_width * 2;
+margin_right = stroke_width * 2;
 margin_top = 0;
 margin_left = 0;
 
@@ -152,17 +156,121 @@ sample_posts = d3.shuffle(transpose(posts_metadata))
     ...d
   }));
 
+popup = d3.select("#projects-grid")
+  .append("div")
+  .attr("class", "tooltip")
+  .style("opacity", 0)
+  .style("background-color", offwhite) // TODO: For testing
+  .style("border", "solid")
+  .style("border-width", "2px")
+  .style("border-color", offblack)
+
+mouseover = function(d) {
+  d3.select(this)
+    .transition()
+    .duration("100")
+    .attr("width", point_width * 1.5)
+    .attr("height", point_height * 1.5)
+    .attr("fill-opacity", 1)
+}
+
+mouseleave = function(d) {
+  d3.select(this)
+    .transition()
+    .duration("100")
+    .attr("width", point_width)
+    .attr("height", point_height)
+    .attr("fill-opacity", 0)
+}
+
+click = function(event, d) {
+  if (this.classList.contains("open")) {
+    d3.select(this).classed("open", false);
+  }
+  else {
+    // Close any currently open points and open this point
+    d3.selectAll(".grid-point").classed("open", false)
+    d3.select(this).classed("open", true)
+    
+    d3.select(this)
+      .transition()
+      .duration("100")
+      .attr("width", point_width * 1.5 * 10)
+      .attr("height", point_height * 1.5 * 10)
+      .attr("fill-opacity", 1)
+    
+    /*
+    
+    // Get the exact position of the SVG rectangle
+    const box = this.getBoundingClientRect();
+    const x = box.left + window.scrollX - 1;
+    const y = box.top + window.scrollY - 1; 
+    
+    popup
+      .style("width", box.width - 3 + "px")
+      .style("height", box.height - 3 + "px")
+      .style("opacity", 1)
+      .style("left", x + "px")
+      .style("top", y + "px")
+      // .transition()
+      // .duration("400")
+      // .style("width", "200px")
+      // .style("height", "200px")
+    
+    */
+  }
+}
+
+// TODO: Here's the weird new strategy
+// We're going to insert or remove sibling elements on the fly on mouse over:
+//
+// Sibling Insert:
+// https://stackoverflow.com/questions/28249941/how-to-insert-after-a-sibling-element-in-d3-js
+//
+// When the rect is moused over, we'll insert sibling text elements using the
+// data and then remove them once it's closed.
+//
+// Remove (we will just remove every SVG text element)
+// https://stackoverflow.com/questions/44079951/remove-element-in-d3-js
+//
+// Add the grid points
 svg.append("g")
-    .attr("stroke", offblack)
-    .attr("stroke-width", stroke_width)
-    .attr("fill", "none")
-  .selectAll("rect")
+  .selectAll("g")
   .data(sample_posts)
-  .join("rect")
+  .enter()
+  .append("g")
+  
+  .append("rect")
     .attr("x", d => x(d.x) - (3 * stroke_width))
     .attr("y", d => y(d.y) - (3 * stroke_width))
     .attr("width", 2)
-    .attr("height", 2);
+    .attr("height", 2)
+    .attr("stroke", offblack)
+    .attr("stroke-width", stroke_width)
+    .attr("fill", offwhite)
+    .attr("fill-opacity", 0)
+    .classed("grid-point", true)
+    .on("mouseover", mouseover)
+    .on("mouseleave", mouseleave)
+    
+  .select(function() { return this.parentNode; })
+  .append("text")
+    .attr("x", d => x(d.x) - (3 * stroke_width) + 4)
+    .attr("y", d => y(d.y) - (3 * stroke_width))
+    .attr("font-size", "2px")
+    .attr("font-family", "Inter")
+    .attr("opacity", 1)
+    .text(d => "Title: " + d.title)
+    
+  .select(function() { return this.parentNode; })
+  .append("a")
+    .attr("href", "https://developer.mozilla.org/en-US/docs/Web/SVG/Element/a")
+    .append("text")
+      .attr("x", d => x(d.x) - (3 * stroke_width) + 4)
+      .attr("y", d => y(d.y) - (3 * stroke_width) + 2)
+      .attr("font-size", "2px")
+      .attr("font-family", "Inter")
+      .text("Link")
 
 // Add the grid lines
 svg.append("g")
