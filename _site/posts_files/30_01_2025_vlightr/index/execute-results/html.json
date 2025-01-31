@@ -1,0 +1,16 @@
+{
+  "hash": "8d5132abda404bd91d381d682b0e0d4c",
+  "result": {
+    "markdown": "---\ntitle: vlightr\ndate: '2025-01-30'\ncategories: [\"package\", \"{vctrs}\"]\nimage: \"vlightr_hex.png\"\nsmallimage: '<img src=\"posts/30_01_2025_vlightr/vlightr_small.png\">'\ndescription: |\n  Conditionally format vectors of any class in R using {cli} text formatting.\n  {vlightr} makes interactive data explication easier, by allowing elements of\n  vectors and dataframe columns to be found with ease.\nsummary: |\n  Conditionally format vectors of any class in R using {cli} text formatting.\n  {vlightr} makes interactive data explication easier, by allowing elements of\n  vectors and dataframe columns to be found with ease.\n---\n\n::: {.cell}\n\n:::\n\n\nThis is a sample post for the `{vlightr}` package.\n",
+    "supporting": [
+      "index_files"
+    ],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

@@ -1,0 +1,19 @@
+---
+page-layout: custom
+---
+
+```{r notes}
+#| echo = FALSE
+
+# - Including images from a folder:
+#   https://github.com/r-lgbtq/rainbowr.org/tree/main/posts/2024-06-07_new-look
+```
+
+Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="black-link">Open Research Lab</a>, a San Fransisco based economics research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="black-link">Clean Air Partnership</a>, a charitable environmental organization.
+
+My research interests include reproducibility in social science research, causal inference, and statistical software design. Click the black boxes ↓ to preview some of my personal projects.
+
+This is a link to the <a href="http://localhost:3953/about.html">about page</a>.
+Once you have a website I think you could manage creating the D3 hyperlinks just
+like this! You'll just need to link to the post instead. This is the vlightr
+<a href="http://localhost:3953/posts/30_01_2025_vlightr/">post</a>.

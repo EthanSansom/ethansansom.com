@@ -1,0 +1,16 @@
+{
+  "hash": "1b6dca403f6351ba9288b1bcc340bec7",
+  "result": {
+    "markdown": "---\ntitle: \"That's not a `|>`, this is a `%>%`.\"\ndate: '2025-01-30'\ncategories: [\"meta programming\", \"{rlang}\", \"{magrittr}\"]\nimage: \"pipe.png\"\ndescription: |\n  An article about pipes!\nsummary: |\n  An article about pipes!\n---\n\n::: {.cell}\n::: {.cell-output-display}\n```{=html}\n<style>\n:root {\n  --lightblue: #96BFE3;\n}\n\nbody {\n  background-color: var(--lightblue);\n}\n\nh1 {\n  font-size: 1rem;\n}\n</style>\n```\n:::\n:::\n\n::: {.cell}\n\n:::\n\n\nThis is a sample post for an article about `|>` vs. `%>%`.\n\n\n::: {.cell}\n\n```{.r .cell-code}\nlibrary(magrittr)\n\"Wow\" %>% print()\n```\n\n::: {.cell-output .cell-output-stdout}\n```\n[1] \"Wow\"\n```\n:::\n:::\n",
+    "supporting": [
+      "index_files"
+    ],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

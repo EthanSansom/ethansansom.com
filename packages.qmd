@@ -1,0 +1,21 @@
+---
+title: "Packages"
+page-layout: custom
+listing:
+  contents: posts
+  include:
+    categories: "package"
+  sort: "date desc"
+  type: grid
+  grid-columns: 3
+  grid-item-border: false
+---
+
+```{r notes}
+#| echo = FALSE
+
+# TODO: You'll need a custom listing here, just a simple grid, since the
+# default listing doesn't maintain the square aspect ratio of the hex sticker.
+# Since all the photos are square anyways, we want to make sure the image
+# container remains a square as well.
+```

@@ -1,0 +1,21 @@
+---
+title: "Posts"
+page-layout: custom
+listing:
+  contents: posts
+  type: table
+  sort: "date desc"
+  filter-ui: false
+  sort-ui: false
+  fields: [smallimage, title, description]
+  field-display-names:
+    smallimage: "Photo"
+    title: "Title"
+    description: "Description"
+---
+
+```{r notes}
+#| echo = FALSE
+
+# This is the big "Posts" page
+```

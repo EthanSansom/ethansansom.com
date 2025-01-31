@@ -1,0 +1,53 @@
+/*-- scss:defaults --*/
+
+// Import fonts
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+// FLAG: Importing Oswald only for testing, since it's very distinct
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
+
+// Define font qualities
+$weightbold: 700;
+$weightsemibold: 500;
+$weightregular: 400;
+
+// Define colors
+$offblack: #1E1E1E;
+$offwhite: #FFFBFC;
+$lightblue: #96BFE3;
+
+// navbar
+$navbar-bg: $offwhite; // navbar
+$navbar-fg: $offblack; // navbar foreground elements
+$navbar-hl: $lightblue; // highlight color when hovering over navbar links
+
+// body
+$body-bg: $offwhite; // page background 
+$body-color: $offblack; // page text
+
+// footer
+$footer-bg: $offwhite; // footer 
+$link-color: $offblack; // hyperlinks 
+
+/*-- scss:rules --*/
+
+a.nav-link:visited span {
+  color: $offblack;
+}
+
+a.nav-link:active span {
+  color: $offblack;
+}
+
+a.nav-link:hover span {
+  color: $lightblue;
+}
+
+a.title.listing-title:hover {
+  color: $lightblue;
+}
+
+a.black-link:hover {
+  color: $lightblue;
+  text-decoration: underline;
+}
