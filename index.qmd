@@ -5,15 +5,219 @@ page-layout: custom
 ```{r notes}
 #| echo = FALSE
 
+# IMPORTANT:
+# See here: https://stackoverflow.com/questions/15649244/responsive-font-size-in-css
+# For a responsive font-size suggestion from ashuvssut (not at the top).
+#
+# // Clamp font size
+# h1{
+#  font-size : clamp(2rem, 10vw, 5rem);
+# }
+#
+# // Clamp font awesome icon size (we should use these)
+# .fa-random-icon {
+#   font-size: clamp( 15rem, 80vw, 80vh)   
+# }
+#
+# TODO: Make a clearer system for the sizing (and relative sizing)
+# of all the fonts in the ecosystem:
+# - body
+# - page title
+# - navbar title + navbar logo text
+# - headers
+
 # - Including images from a folder:
 #   https://github.com/r-lgbtq/rainbowr.org/tree/main/posts/2024-06-07_new-look
 ```
 
-Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="black-link">Open Research Lab</a>, a San Fransisco based economics research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="black-link">Clean Air Partnership</a>, a charitable environmental organization.
+Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="black-link">Open Research Lab</a>, a San Fransisco based research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="black-link">Clean Air Partnership</a>, a charitable environmental organization.
 
 My research interests include reproducibility in social science research, causal inference, and statistical software design. Click the black boxes ↓ to preview some of my personal projects.
 
-This is a link to the <a href="http://localhost:3953/about.html">about page</a>.
-Once you have a website I think you could manage creating the D3 hyperlinks just
-like this! You'll just need to link to the post instead. This is the vlightr
-<a href="http://localhost:3953/posts/30_01_2025_vlightr/">post</a>.
+
+```{r load-posts}
+#| include = FALSE
+
+library(yaml)
+library(here)
+
+posts_directory <- here::here("posts")
+posts_folders_relative_paths <- file.path("posts", dir(posts_directory))
+posts_paths <- here::here(posts_directory, dir(posts_directory), "index.qmd")
+
+# Parse the YAML frontmatter of a post at `path` and return a data.frame.
+# Attempts to parse only up to line `n` (default `n = 25` should be sufficient).
+read_post_yaml <- function(path, n = 25) {
+  lines <- readLines(path, n = n)
+  yaml_breaks <- which(lines == "---")
+  if (length(yaml_breaks) < 2) {
+    return(out)
+  }
+  # TODO: Add the "categories" to filter on. They're a list column, so maybe
+  # just grab up to the first three and make those 3 separate columns
+  out <- data.frame(
+    title = "",
+    date = "",
+    image = "",
+    smallimage = "",
+    description = "",
+    summary = ""
+  )
+  yaml_lines <- lines[seq(yaml_breaks[[1]], yaml_breaks[[2]])]
+  metadata <- yaml::read_yaml(text = paste(yaml_lines, collapse = "\n"))
+  metadata_required_fields <- intersect(names(out), names(metadata))
+  
+  out[metadata_required_fields] <- metadata[metadata_required_fields]
+  out["path"] <- path
+  out
+}
+
+# Pass the metadata onto OJS
+posts_metadata <- do.call(rbind, lapply(posts_paths, read_post_yaml))
+posts_metadata$relative_folder_path <- posts_folders_relative_paths
+ojs_define(posts_metadata)
+```
+
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// TODO:
+// - hover effects for the points
+// - tool-tips for the points (easier)
+// - expanding points instead of tool-tip (harder)
+// - custom filters for points
+
+d3 = require("d3");
+
+// TODO: You'll want to set up a custom class for these SVGs (and include the
+// class as an attribute), so you can set the light/darkmode color using your
+// .scss scripts
+
+// Constants
+lightblue = "#96BFE3";
+offblack = "#1E1E1E";
+stroke_width = 0.25; // This is relative to the `viewBox` scale of the `svg`
+n_cols = 12;
+n_rows = 14;
+width = n_cols * 10;
+height = n_rows * 10;
+
+// Prevents the right and bottom grid lines from being clipped
+margin_bottom = stroke_width;
+margin_right = stroke_width;
+margin_top = 0;
+margin_left = 0;
+
+// Following this example: https://observablehq.com/@d3/scatterplot/2
+svg = d3.select("#projects-grid")
+  .append("svg")
+  // Force the plot to a 2:3 aspect ratio, that fills the parent div width 100%
+  .attr("viewBox", [0, 0, width, height])
+  .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+
+// Translates the full width into `n_cols` grid lengths
+x = d3.scaleLinear()
+  .domain([0, n_cols])
+  .range([margin_left, width - margin_right]);
+
+// Translates the full height into `n_rows` grid lengths
+y = d3.scaleLinear()
+  .domain([0, n_rows])
+  .range([height - margin_bottom, margin_top]);
+
+// TODO: Later we'll want to apply some filters to the data instead of
+// randomly sampling
+
+// Sample `n_posts` from the available posts
+n_posts = 6;
+
+// Decreasing the range to prevent points on the border of the grid
+// TODO: We'll eventually want to prevent collisions, maybe by sampling
+// within a disjoint grid for each point
+random_x = d3.shuffle(d3.range(1 + 1, n_cols - 1)).slice(0, n_posts)
+random_y = d3.shuffle(d3.range(1 + 1, n_rows - 1)).slice(0, n_posts)
+
+// NOTE:
+// - transpose() converts from an Object of Arrays to an Array of Objects
+// - d3.shuffle() re-arranges the rows
+// - .slice(0, n_posts) will sample `n_posts` of the shuffled rows
+// - .map() is adding an x and y column using the randomly generated coordinates
+sample_posts = d3.shuffle(transpose(posts_metadata))
+  .slice(0, n_posts)
+  .map((d, i) => ({
+    x: random_x[i],
+    y: random_y[i],
+    ...d
+  }));
+
+svg.append("g")
+    .attr("stroke", offblack)
+    .attr("stroke-width", stroke_width)
+    .attr("fill", "none")
+  .selectAll("rect")
+  .data(sample_posts)
+  .join("rect")
+    .attr("x", d => x(d.x) - (3 * stroke_width))
+    .attr("y", d => y(d.y) - (3 * stroke_width))
+    .attr("width", 2)
+    .attr("height", 2);
+
+// Add the grid lines
+svg.append("g")
+  .attr("stroke", lightblue)
+  .attr("stroke-width", stroke_width)
+  .call(g => g.append("g")
+    .selectAll("line")
+    .data(x.ticks())
+    .join("line")
+      // `(stroke_width / 2)` centers the line to adjust for the stroke width on
+      // the left and right sides of the line
+      .attr("x1", d => (stroke_width / 2) + x(d))
+      .attr("x2", d => (stroke_width / 2) + x(d))
+      .attr("y1", margin_top)
+      .attr("y2", height - margin_bottom))
+  .call(g => g.append("g")
+    .selectAll("line")
+    .data(y.ticks())
+    .join("line")
+      .attr("y1", d => (stroke_width / 2) + y(d))
+      .attr("y2", d => (stroke_width / 2) + y(d))
+      .attr("x1", margin_left)
+      .attr("x2", width - margin_right))
+  // HACK: Without this there's a tiny gap in the bottom left corner. The
+  // example has this issue as well, not sure of a better fix yet.
+  .call(g => g.append("g")
+    .selectAll("line")
+    .data(y.ticks().slice(0, 1))
+    .join("line")
+      .attr("y1", d => (stroke_width / 2) + y(d))
+      .attr("y2", d => (stroke_width / 2) + y(d))
+      .attr("x1", margin_left)
+      // Extending one stroke width past the margin to fill in the gap
+      .attr("x2", width - margin_right + stroke_width));
+```
+
+<!--This is the container for the D3 above--->
+<div id="projects-grid" style = "padding: 1em 0px"></div>
+
+::: {.grid}
+
+::: {.g-col-6}
+<h3>About this Website</h3>
+This website is hosted on Netlify, programmed in R, using Quarto.
+See this <a href="https://github.com/EthanSansom/ethansansom.com" class="black-link">github repository</a> for the source code. The dynamic elements 
+on this page are programmed using the D3 Javascript library.
+:::
+
+::: {.g-col-6}
+<h3>Contact</h3>
+I haven't set up a way for you to contact me yet.
+:::
+
+:::
+
+<br>
+<br>
+<br>
