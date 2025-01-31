@@ -172,6 +172,19 @@ mouseover = function(d) {
     .attr("width", point_width * 1.5)
     .attr("height", point_height * 1.5)
     .attr("fill-opacity", 1)
+    
+  // TODO: YES! This appends a SVG <text> element to the parent node
+  // On moveover we just need to use the provided data to add child
+  // text elements to this group (we can even do links) and ensure that
+  // they are styled correctly. We'll have the advantage of knowing
+  // about the data and the position of this element!
+  //
+  // We can even use the x, y coordinates to determine whether we should
+  // pop up/down and left/right so we don't clip out of the grid!
+  d3.select(this.parentNode)
+    .append("text")
+    .classed("point-text", true)
+    .text(d => d.title)
 }
 
 mouseleave = function(d) {
@@ -181,6 +194,10 @@ mouseleave = function(d) {
     .attr("width", point_width)
     .attr("height", point_height)
     .attr("fill-opacity", 0)
+  
+  // Clean up any text generated during mouse over
+  d3.selectAll(".point-text")
+    .remove()
 }
 
 click = function(event, d) {
@@ -199,6 +216,9 @@ click = function(event, d) {
       .attr("height", point_height * 1.5 * 10)
       .attr("fill-opacity", 1)
     
+    d3.select(this.parentNode)
+      .append("text")
+      .text(d => d.title)
     /*
     
     // Get the exact position of the SVG rectangle
@@ -239,7 +259,6 @@ svg.append("g")
   .data(sample_posts)
   .enter()
   .append("g")
-  
   .append("rect")
     .attr("x", d => x(d.x) - (3 * stroke_width))
     .attr("y", d => y(d.y) - (3 * stroke_width))
@@ -252,25 +271,6 @@ svg.append("g")
     .classed("grid-point", true)
     .on("mouseover", mouseover)
     .on("mouseleave", mouseleave)
-    
-  .select(function() { return this.parentNode; })
-  .append("text")
-    .attr("x", d => x(d.x) - (3 * stroke_width) + 4)
-    .attr("y", d => y(d.y) - (3 * stroke_width))
-    .attr("font-size", "2px")
-    .attr("font-family", "Inter")
-    .attr("opacity", 1)
-    .text(d => "Title: " + d.title)
-    
-  .select(function() { return this.parentNode; })
-  .append("a")
-    .attr("href", "https://developer.mozilla.org/en-US/docs/Web/SVG/Element/a")
-    .append("text")
-      .attr("x", d => x(d.x) - (3 * stroke_width) + 4)
-      .attr("y", d => y(d.y) - (3 * stroke_width) + 2)
-      .attr("font-size", "2px")
-      .attr("font-family", "Inter")
-      .text("Link")
 
 // Add the grid lines
 svg.append("g")
