@@ -5,6 +5,7 @@ page-layout: custom
 ```{r notes}
 #| echo = FALSE
 
+# TODO:
 # IMPORTANT:
 # See here: https://stackoverflow.com/questions/15649244/responsive-font-size-in-css
 # For a responsive font-size suggestion from ashuvssut (not at the top).
@@ -25,15 +26,11 @@ page-layout: custom
 # - page title
 # - navbar title + navbar logo text
 # - headers
-
-# - Including images from a folder:
-#   https://github.com/r-lgbtq/rainbowr.org/tree/main/posts/2024-06-07_new-look
 ```
 
 Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="black-link">Open Research Lab</a>, a San Fransisco based research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="black-link">Clean Air Partnership</a>, a charitable environmental organization.
 
 My research interests include reproducibility in social science research, causal inference, and statistical software design. Click the black boxes ↓ to preview some of my personal projects.
-
 
 ```{r load-posts}
 #| include = FALSE
@@ -82,14 +79,10 @@ ojs_define(posts_metadata)
 ```{ojs}
 //| echo: false
 //| output: false
+d3 = require("d3");
 
 // TODO:
-// - hover effects for the points
-// - tool-tips for the points (easier)
-// - expanding points instead of tool-tip (harder)
 // - custom filters for points
-
-d3 = require("d3");
 
 // TODO: You'll want to set up a custom class for these SVGs (and include the
 // class as an attribute), so you can set the light/darkmode color using your
@@ -125,9 +118,14 @@ margin_left = 0;
 // Following this example: https://observablehq.com/@d3/scatterplot/2
 svg = d3.select("#projects-grid")
   .append("svg")
-  // Force the plot to a 2:3 aspect ratio, that fills the parent div width 100%
+  // Force the plot to width/height aspect ratio which fills the parent width
   .attr("viewBox", [0, 0, width, height])
-  .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  .attr("style", "max-width: 100%; height: auto;");
+
+// Use the SVG <use> feature to control which grid point is rendered on top
+use = svg
+  .append("use")
+  .attr("xlink:href", "")
 
 // Translates the full width into `n_cols` grid lengths
 x = d3.scaleLinear()
@@ -142,20 +140,14 @@ y = d3.scaleLinear()
 // TODO: Later we'll want to apply some filters to the data instead of
 // randomly sampling
 
-// Sample `n_posts` from the available posts
+// Generate random `(x, y)` coordinates for each post.
+// - Shuffling creates distinct `(x, y)` coordinates, i.e. no overlapping posts
+// - Restricting the range to avoid coordinates on the edge of the grid
 n_posts = 6;
-
-// Decreasing the range to prevent points on the border of the grid
-// TODO: We'll eventually want to prevent collisions, maybe by sampling
-// within a disjoint grid for each point
 random_x = d3.shuffle(d3.range(1 + 1, n_cols - 1)).slice(0, n_posts)
 random_y = d3.shuffle(d3.range(1 + 1, n_rows - 1)).slice(0, n_posts)
 
-// NOTE:
-// - transpose() converts from an Object of Arrays to an Array of Objects
-// - d3.shuffle() re-arranges the rows
-// - .slice(0, n_posts) will sample `n_posts` of the shuffled rows
-// - .map() is adding an x and y column using the randomly generated coordinates
+// Sample `n_posts` and assign random `(x, y)` coordinates
 sample_posts = d3.shuffle(transpose(posts_metadata))
   .slice(0, n_posts)
   .map((d, i) => ({
@@ -164,25 +156,24 @@ sample_posts = d3.shuffle(transpose(posts_metadata))
     ...d
   }));
 
-popup = d3.select("#projects-grid")
-  .append("div")
-  .attr("class", "tooltip")
-  .style("opacity", 0)
-  .style("background-color", offwhite) // TODO: For testing
-  .style("border", "solid")
-  .style("border-width", "2px")
-  .style("border-color", offblack)
-
 mouseover = function(d) {
 
   const parent = d3.select(this.parentNode)
+  
+  // Determine in which direction the point should expand
+  const expand_dir_x = d3.select(this).attr("data-expand-dir-x");
+  const expand_dir_y = d3.select(this).attr("data-expand-dir-y");
 
-  // Determine where the current point and textbox live
+  // Determine where the current point and text-box live
   const point_x = Number(d3.select(this).attr("x"))
   const point_y = Number(d3.select(this).attr("y"))
   const textbox_x = point_x + point_width;
   const textbox_y = point_y + point_height + point_title_size;
 
+  // Raise the parent to the top so that this grid point appears above others
+  parent
+    .raise()
+  
   // Append the title text
   parent
     .append("text")
@@ -251,33 +242,49 @@ mouseover = function(d) {
     }
   }
   
-  // Expand the grid point and then insert the summary text within it.
-  // TODO: Re-work this system a little bit so we can handle custom heights
-  const expanded_width = maximum_chars_per_line * 0.95;
+  // Calculate the total width and height required for the expanded grid-point.
+  // By default, the grid-point will expand towards the bottom-left of the page.
+  // To expand in another direction (e.g. up-right), we offset the x, y position
+  // of the point as we expand.
+  const expanded_width = maximum_chars_per_line + point_width;
   const expanded_height = (n_lines * line_height) + (point_title_size * 4) + point_text_size;
+  const x_offset = (expand_dir_x === "right") ? 0 : expanded_width - point_width;
+  const y_offset = (expand_dir_y === "down") ? 0 : expanded_height - point_height;
+
+  // Expand the grid point, offsetting the (x, y) position as needed
   d3.select(this)
     .transition()
     .duration("300")
     .attr("x", function() { 
-      if (d3.select(this).attr("data-expand-dir-x") === "right") {
-        return d3.select(this).attr("data-original-x")
-      }
-      else {
-        return d3.select(this).attr("data-original-x") - expanded_width + point_width;
-      }
+      return d3.select(this).attr("data-original-x") - x_offset;
     })
     .attr("y", function() { 
-      if (d3.select(this).attr("data-expand-dir-y") === "down") {
-        return d3.select(this).attr("data-original-y")
-      }
-      else {
-        return d3.select(this).attr("data-original-y") - expanded_height + point_height; 
-      }
+      return d3.select(this).attr("data-original-y") - y_offset;
     })
     .attr("width", expanded_width)
     .attr("height", expanded_height)
     .attr("fill-opacity", 1)
-    
+  
+  // Offset the text elements if required
+  if (x_offset != 0 | y_offset != 0) {
+     parent
+      .selectAll(".point-title")
+      .attr("x", function() { 
+        return d3.select(this).attr("x") - x_offset;
+      })
+      .attr("y", function() { 
+        return d3.select(this).attr("y") - y_offset;
+      })
+    parent
+      .selectAll(".point-text")
+      .attr("x", function() { 
+        return d3.select(this).attr("x") - x_offset;
+      })
+      .attr("y", function() { 
+        return d3.select(this).attr("y") - y_offset;
+      })
+  }
+  
   // TODO: 
   // - We still need to place the text according to where the point is going to expand
   // - We also need to set the mouseover and mouseleave to the parent element <g> rather
@@ -327,18 +334,6 @@ mouseleave = function(d) {
     .attr("fill-opacity", 0)
 }
 
-// TODO: Here's the weird new strategy
-// We're going to insert or remove sibling elements on the fly on mouse over:
-//
-// Sibling Insert:
-// https://stackoverflow.com/questions/28249941/how-to-insert-after-a-sibling-element-in-d3-js
-//
-// When the rect is moused over, we'll insert sibling text elements using the
-// data and then remove them once it's closed.
-//
-// Remove (we will just remove every SVG text element)
-// https://stackoverflow.com/questions/44079951/remove-element-in-d3-js
-//
 // Add the grid points
 svg.append("g")
   .selectAll("g")
@@ -347,6 +342,7 @@ svg.append("g")
   .append("g")
   .append("rect")
     .classed("grid-point", true)
+    .attr("id", (d, i) => "point" + i)
     .attr("x", d => x(d.x) - (3 * stroke_width))
     .attr("y", d => y(d.y) - (3 * stroke_width))
     .attr("data-original-x", d => x(d.x) - (3 * stroke_width))
@@ -418,6 +414,7 @@ I haven't set up a way for you to contact me yet.
 
 :::
 
+<!--TODO: Add a footer!--->
 <br>
 <br>
 <br>
