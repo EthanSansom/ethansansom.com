@@ -14,6 +14,21 @@
 
 /* <--- Align the navbar and body margins ---> */
 
+.point-title {
+  font-weight: var(--weightbold);
+}
+
+.point-text {
+  font-weight: var(--weightregular);
+}
+
+.open {
+  fill: var(--offwhite);
+  fill-opacity: 1;
+}
+
+/* <--- Align the navbar and body margins ---> */
+
 /*
 Rather than fuss too much with aligning the navbar to the default
 `page-layout: full` setting, I specify a custom page layout for
@@ -57,6 +72,11 @@ the body and navbar margins.
 }
 
 /* <--- Misc ---> */
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: var(--weightbold);
+}
 
 /* Increases the default padding of the Posts listings table from 0.5rm */
 .table>:not(caption)>*>* {
