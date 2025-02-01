@@ -105,6 +105,12 @@ n_rows = 14;
 width = n_cols * 10;
 height = n_rows * 10;
 
+// These describe the characteristics of the grid points and need to be tuned
+// relative to one another such that the SVG text fits within an expanded grid
+// point on mouse hover.
+point_title_size = 3;
+point_text_size = 2;
+maximum_chars_per_line = 60;
 point_width = 2;
 point_height = 2;
 
@@ -166,38 +172,123 @@ popup = d3.select("#projects-grid")
   .style("border-color", offblack)
 
 mouseover = function(d) {
+  
+  // TODO: This is kind of gross, maybe wrap in helper functions. I'm wrapping
+  // this in a function so I can call it after expanding the pop-up
+  const append_text = function() {
+    // TODO: YES! This appends a SVG <text> element to the parent node
+    // On moveover we just need to use the provided data to add child
+    // text elements to this group (we can even do links) and ensure that
+    // they are styled correctly. We'll have the advantage of knowing
+    // about the data and the position of this element!
+    //
+    // We can even use the x, y coordinates to determine whether we should
+    // pop up/down and left/right so we don't clip out of the grid!
+    const parent = d3.select(this.parentNode)
+  
+    // TODO: We may even want to just create this text at the beginning, within
+    // the <g> group. Then, here we just make it opaque (from transparent) after
+    // a delay of transition().delay("100") so it appears after the expansion.
+    //
+    // On second thought, since we're dynamically determining the direction of
+    // the expansion (to avoid hitting a wall), why don't we just append the
+    // required text here.
+    const point_x = Number(d3.select(this).attr("x"))
+    const point_y = Number(d3.select(this).attr("y"))
+    
+    // Adjust the corners of the SVG textbox
+    const textbox_x = point_x + point_width;
+    const textbox_y = point_y + point_height + point_title_size;
+  
+    parent
+      .append("text")
+      .classed("point-title", true)
+      .text(d => d.title)
+      .attr("x", textbox_x)
+      .attr("y", textbox_y)
+      .attr("font-size", point_title_size)
+    
+    // TODO: Move this to a function, maybe, and we'll also need to implement it
+    // for the title text! Maybe we'll change the title font-size if the title is
+    // super long as well.
+    //
+    // SVG <text> doesn't have line wrapping (as far as I know), so we'll
+    // implement it manually. For each summary paragraph associated with a grid
+    // point, wrap the summary text at `maximum_chars_per_line`.
+    const line_height = point_text_size * 1.25;
+    const summaries = parent.data().map(function(d) { return d.summary; })
+    var line_y = textbox_y + point_title_size;
+    
+    for (var i = 0; i < summaries.length; i++) {
+      const summary = summaries[i]
+      const current_group = d3.select(parent.nodes()[i]) // <g> element we're appending to
+      var words = summary.split(" ")
+      var line = ""
+      
+      for (var j = 0; j < words.length; j++) {
+        var test_line = line + " " + words[j]
+        
+        // TODO: This breaks with words > 20 characters long. Implement hyphenation
+        // of those words.
+        
+        // If the test line is too long, append the current line as a child of
+        // the current_group <g>
+        if (test_line.length > maximum_chars_per_line) {
+          current_group
+            .append("text")
+            .classed("point-text", true)
+            .text(line)
+            .attr("x", textbox_x)
+            .attr("y", line_y)
+            .attr("font-size", point_text_size)
+          
+          // Increment the line counter so we offset the y of the next line
+          line_y += line_height;
+          line = words[j];
+          // TODO: I think ^ this point where the line is just one word long is
+          // where we'll want to check for 20+ character words. Although, we could
+          // do a super long word check at any-time and then break it up.
+        }
+        else {
+          line = test_line
+        }
+      }
+      // We'll have one final line to append at the end of the process
+      if (line != "") {
+        current_group
+          .append("text")
+          .classed("point-text", true)
+          .text(line)
+          .attr("x", textbox_x)
+          .attr("y", line_y)
+          .attr("font-size", point_text_size)
+      }
+    }
+  }
+
+  // Expand the grid point and then insert the summary text within it.
+  // TODO: Re-work this system a little bit so we can handle custom heights
   d3.select(this)
     .transition()
-    .duration("100")
-    .attr("width", point_width * 1.5)
-    .attr("height", point_height * 1.5)
+    .duration("300")
+    .attr("width", point_width * 30)
+    .attr("height", point_height * 20)
     .attr("fill-opacity", 1)
-    
-  // TODO: YES! This appends a SVG <text> element to the parent node
-  // On moveover we just need to use the provided data to add child
-  // text elements to this group (we can even do links) and ensure that
-  // they are styled correctly. We'll have the advantage of knowing
-  // about the data and the position of this element!
-  //
-  // We can even use the x, y coordinates to determine whether we should
-  // pop up/down and left/right so we don't clip out of the grid!
-  d3.select(this.parentNode)
-    .append("text")
-    .classed("point-text", true)
-    .text(d => d.title)
+    .on("end", append_text)
 }
 
 mouseleave = function(d) {
+  // Clean up any text generated during mouse over
+  d3.selectAll(".point-title").remove()
+  d3.selectAll(".point-text").remove()
+  
+  // De-expand the grid-point to it's original width
   d3.select(this)
     .transition()
     .duration("100")
     .attr("width", point_width)
     .attr("height", point_height)
     .attr("fill-opacity", 0)
-  
-  // Clean up any text generated during mouse over
-  d3.selectAll(".point-text")
-    .remove()
 }
 
 click = function(event, d) {
@@ -307,8 +398,9 @@ svg.append("g")
       .attr("x2", width - margin_right + stroke_width));
 ```
 
+
 <!--This is the container for the D3 above--->
-<div id="projects-grid" style = "padding: 1em 0px"></div>
+<div id="projects-grid"></div>
 
 ::: {.grid}
 
