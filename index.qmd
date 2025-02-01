@@ -156,21 +156,24 @@ sample_posts = d3.shuffle(transpose(posts_metadata))
     ...d
   }));
 
-mouseover = function(d) {
-
-  const parent = d3.select(this.parentNode)
+mouseenter = function(d) {
+  // We're mousing over the parent <g> container, which is `this` but we really 
+  // care about editing the grid-point and it's siblings (text elements).
+  const parent = d3.select(this)
+  const grid_point = parent.select("rect")
   
   // Determine in which direction the point should expand
-  const expand_dir_x = d3.select(this).attr("data-expand-dir-x");
-  const expand_dir_y = d3.select(this).attr("data-expand-dir-y");
-
+  const expand_dir_x = grid_point.attr("data-expand-dir-x");
+  const expand_dir_y = grid_point.attr("data-expand-dir-y");
+  
   // Determine where the current point and text-box live
-  const point_x = Number(d3.select(this).attr("x"))
-  const point_y = Number(d3.select(this).attr("y"))
+  const point_x = Number(grid_point.attr("x"))
+  const point_y = Number(grid_point.attr("y"))
   const textbox_x = point_x + point_width;
   const textbox_y = point_y + point_height + point_title_size;
 
-  // Raise the parent to the top so that this grid point appears above others
+  // Raise this <g> container to the top so it's contents appear above other
+  // grid points.
   parent
     .raise()
   
@@ -197,7 +200,7 @@ mouseover = function(d) {
   
   for (var i = 0; i < summaries.length; i++) {
     const summary = summaries[i]
-    const current_group = d3.select(parent.nodes()[i]) // <g> element we're appending to
+    const current_group = parent; // d3.select(parent.nodes()[i]) // <g> element we're appending to
     var words = summary.split(" ")
     var line = ""
     
@@ -252,7 +255,7 @@ mouseover = function(d) {
   const y_offset = (expand_dir_y === "down") ? 0 : expanded_height - point_height;
 
   // Expand the grid point, offsetting the (x, y) position as needed
-  d3.select(this)
+  grid_point
     .transition()
     .duration("300")
     .attr("x", function() { 
@@ -305,24 +308,17 @@ mouseover = function(d) {
 }
 
 mouseleave = function(d) {
-  // Fade out and then remove any text generated during mouse over
-  d3.selectAll(".point-title")
-    .transition()
-    .duration("100")
-    .style("opacity", 0)
-    .on("end", function() {
-      d3.select(this).remove();
-    })
-  d3.selectAll(".point-text")
-    .transition()
-    .duration("100")
-    .style("opacity", 0)
-    .on("end", function() {
-      d3.select(this).remove();
-    })
+  // Remove any point text or titles from the grid
+  svg
+    .selectAll(".point-title")
+    .remove();
+  svg
+    .selectAll(".point-text")
+    .remove()
   
   // De-expand the grid-point to it's original width
   d3.select(this)
+    .select(".grid-point")
     .transition()
     .duration("300")
     // If the point expands anywhere except towards the bottom-left, then the
@@ -340,6 +336,8 @@ svg.append("g")
   .data(sample_posts)
   .enter()
   .append("g")
+  .on("mouseenter", mouseenter)
+  .on("mouseleave", mouseleave)
   .append("rect")
     .classed("grid-point", true)
     .attr("id", (d, i) => "point" + i)
@@ -356,8 +354,6 @@ svg.append("g")
     .attr("stroke-width", stroke_width)
     .attr("fill", offwhite)
     .attr("fill-opacity", 0)
-    .on("mouseover", mouseover)
-    .on("mouseleave", mouseleave)
 
 // Add the grid lines
 svg.append("g")
