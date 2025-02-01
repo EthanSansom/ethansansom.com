@@ -16,10 +16,14 @@
 
 .point-title {
   font-weight: var(--weightbold);
+  fill: var(--offblack);
+  opacity: 0;
 }
 
 .point-text {
   font-weight: var(--weightregular);
+  fill: var(--offblack);
+  opacity: 0;
 }
 
 .open {

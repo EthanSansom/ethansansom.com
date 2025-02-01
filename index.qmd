@@ -102,6 +102,8 @@ offwhite = "#FFFBFC";
 stroke_width = 0.25; // This is relative to the `viewBox` scale of the `svg`
 n_cols = 12;
 n_rows = 14;
+middle_col = Math.floor(n_cols / 2);
+middle_row = Math.floor(n_rows / 2);
 width = n_cols * 10;
 height = n_rows * 10;
 
@@ -172,89 +174,51 @@ popup = d3.select("#projects-grid")
   .style("border-color", offblack)
 
 mouseover = function(d) {
+
+  const parent = d3.select(this.parentNode)
+
+  // Determine where the current point and textbox live
+  const point_x = Number(d3.select(this).attr("x"))
+  const point_y = Number(d3.select(this).attr("y"))
+  const textbox_x = point_x + point_width;
+  const textbox_y = point_y + point_height + point_title_size;
+
+  // Append the title text
+  parent
+    .append("text")
+    .classed("point-title", true)
+    .text(d => d.title)
+    .attr("x", textbox_x)
+    .attr("y", textbox_y)
+    .attr("font-size", point_title_size)
   
-  // TODO: This is kind of gross, maybe wrap in helper functions. I'm wrapping
-  // this in a function so I can call it after expanding the pop-up
-  const append_text = function() {
-    // TODO: YES! This appends a SVG <text> element to the parent node
-    // On moveover we just need to use the provided data to add child
-    // text elements to this group (we can even do links) and ensure that
-    // they are styled correctly. We'll have the advantage of knowing
-    // about the data and the position of this element!
-    //
-    // We can even use the x, y coordinates to determine whether we should
-    // pop up/down and left/right so we don't clip out of the grid!
-    const parent = d3.select(this.parentNode)
+  // TODO: Move this to a function, maybe, and we'll also need to implement it
+  // for the title text! Maybe we'll change the title font-size if the title is
+  // super long as well.
+  //
+  // SVG <text> doesn't have line wrapping (as far as I know), so we'll
+  // implement it manually. For each summary paragraph associated with a grid
+  // point, wrap the summary text at `maximum_chars_per_line`.
+  const line_height = point_text_size * 1.25;
+  const summaries = parent.data().map(function(d) { return d.summary; })
+  var n_lines = 0;
+  var line_y = textbox_y + point_title_size + point_text_size;
   
-    // TODO: We may even want to just create this text at the beginning, within
-    // the <g> group. Then, here we just make it opaque (from transparent) after
-    // a delay of transition().delay("100") so it appears after the expansion.
-    //
-    // On second thought, since we're dynamically determining the direction of
-    // the expansion (to avoid hitting a wall), why don't we just append the
-    // required text here.
-    const point_x = Number(d3.select(this).attr("x"))
-    const point_y = Number(d3.select(this).attr("y"))
+  for (var i = 0; i < summaries.length; i++) {
+    const summary = summaries[i]
+    const current_group = d3.select(parent.nodes()[i]) // <g> element we're appending to
+    var words = summary.split(" ")
+    var line = ""
     
-    // Adjust the corners of the SVG textbox
-    const textbox_x = point_x + point_width;
-    const textbox_y = point_y + point_height + point_title_size;
-  
-    parent
-      .append("text")
-      .classed("point-title", true)
-      .text(d => d.title)
-      .attr("x", textbox_x)
-      .attr("y", textbox_y)
-      .attr("font-size", point_title_size)
-    
-    // TODO: Move this to a function, maybe, and we'll also need to implement it
-    // for the title text! Maybe we'll change the title font-size if the title is
-    // super long as well.
-    //
-    // SVG <text> doesn't have line wrapping (as far as I know), so we'll
-    // implement it manually. For each summary paragraph associated with a grid
-    // point, wrap the summary text at `maximum_chars_per_line`.
-    const line_height = point_text_size * 1.25;
-    const summaries = parent.data().map(function(d) { return d.summary; })
-    var line_y = textbox_y + point_title_size;
-    
-    for (var i = 0; i < summaries.length; i++) {
-      const summary = summaries[i]
-      const current_group = d3.select(parent.nodes()[i]) // <g> element we're appending to
-      var words = summary.split(" ")
-      var line = ""
+    for (var j = 0; j < words.length; j++) {
+      var test_line = line + " " + words[j]
       
-      for (var j = 0; j < words.length; j++) {
-        var test_line = line + " " + words[j]
-        
-        // TODO: This breaks with words > 20 characters long. Implement hyphenation
-        // of those words.
-        
-        // If the test line is too long, append the current line as a child of
-        // the current_group <g>
-        if (test_line.length > maximum_chars_per_line) {
-          current_group
-            .append("text")
-            .classed("point-text", true)
-            .text(line)
-            .attr("x", textbox_x)
-            .attr("y", line_y)
-            .attr("font-size", point_text_size)
-          
-          // Increment the line counter so we offset the y of the next line
-          line_y += line_height;
-          line = words[j];
-          // TODO: I think ^ this point where the line is just one word long is
-          // where we'll want to check for 20+ character words. Although, we could
-          // do a super long word check at any-time and then break it up.
-        }
-        else {
-          line = test_line
-        }
-      }
-      // We'll have one final line to append at the end of the process
-      if (line != "") {
+      // TODO: This breaks with words > 20 characters long. Implement hyphenation
+      // of those words.
+      
+      // If the test line is too long, append the current line as a child of
+      // the current_group <g>
+      if (test_line.length > maximum_chars_per_line) {
         current_group
           .append("text")
           .classed("point-text", true)
@@ -262,74 +226,105 @@ mouseover = function(d) {
           .attr("x", textbox_x)
           .attr("y", line_y)
           .attr("font-size", point_text_size)
+        
+        // Increment the line counter so we offset the y of the next line
+        line_y += line_height;
+        n_lines += 1;
+        line = words[j];
+        // TODO: I think ^ this point where the line is just one word long is
+        // where we'll want to check for 20+ character words. Although, we could
+        // do a super long word check at any-time and then break it up.
+      }
+      else {
+        line = test_line
       }
     }
+    // We'll have one final line to append at the end of the process
+    if (line != "") {
+      current_group
+        .append("text")
+        .classed("point-text", true)
+        .text(line)
+        .attr("x", textbox_x)
+        .attr("y", line_y)
+        .attr("font-size", point_text_size)
+    }
   }
-
+  
   // Expand the grid point and then insert the summary text within it.
   // TODO: Re-work this system a little bit so we can handle custom heights
+  const expanded_width = maximum_chars_per_line * 0.95;
+  const expanded_height = (n_lines * line_height) + (point_title_size * 4) + point_text_size;
   d3.select(this)
     .transition()
     .duration("300")
-    .attr("width", point_width * 30)
-    .attr("height", point_height * 20)
+    .attr("x", function() { 
+      if (d3.select(this).attr("data-expand-dir-x") === "right") {
+        return d3.select(this).attr("data-original-x")
+      }
+      else {
+        return d3.select(this).attr("data-original-x") - expanded_width + point_width;
+      }
+    })
+    .attr("y", function() { 
+      if (d3.select(this).attr("data-expand-dir-y") === "down") {
+        return d3.select(this).attr("data-original-y")
+      }
+      else {
+        return d3.select(this).attr("data-original-y") - expanded_height + point_height; 
+      }
+    })
+    .attr("width", expanded_width)
+    .attr("height", expanded_height)
     .attr("fill-opacity", 1)
-    .on("end", append_text)
+    
+  // TODO: 
+  // - We still need to place the text according to where the point is going to expand
+  // - We also need to set the mouseover and mouseleave to the parent element <g> rather
+  //   than on the <rect> element, which means here we will manipulate `this.select()` rather
+  //   than the `parent`.
+  
+  // We've already added the text, so now we just fade it in
+  parent.selectAll(".point-title")
+    .transition()
+    .delay("100")
+    .duration("200")
+    .style("opacity", 1)
+  parent.selectAll(".point-text")
+    .transition()
+    .delay("100")
+    .duration("200")
+    .style("opacity", 1)
 }
 
 mouseleave = function(d) {
-  // Clean up any text generated during mouse over
-  d3.selectAll(".point-title").remove()
-  d3.selectAll(".point-text").remove()
+  // Fade out and then remove any text generated during mouse over
+  d3.selectAll(".point-title")
+    .transition()
+    .duration("100")
+    .style("opacity", 0)
+    .on("end", function() {
+      d3.select(this).remove();
+    })
+  d3.selectAll(".point-text")
+    .transition()
+    .duration("100")
+    .style("opacity", 0)
+    .on("end", function() {
+      d3.select(this).remove();
+    })
   
   // De-expand the grid-point to it's original width
   d3.select(this)
     .transition()
-    .duration("100")
+    .duration("300")
+    // If the point expands anywhere except towards the bottom-left, then the
+    // x, y coordinates were adjusted during the expansion and need to be reset
+    .attr("x", function() { return d3.select(this).attr("data-original-x"); })
+    .attr("y", function() { return d3.select(this).attr("data-original-y"); })
     .attr("width", point_width)
     .attr("height", point_height)
     .attr("fill-opacity", 0)
-}
-
-click = function(event, d) {
-  if (this.classList.contains("open")) {
-    d3.select(this).classed("open", false);
-  }
-  else {
-    // Close any currently open points and open this point
-    d3.selectAll(".grid-point").classed("open", false)
-    d3.select(this).classed("open", true)
-    
-    d3.select(this)
-      .transition()
-      .duration("100")
-      .attr("width", point_width * 1.5 * 10)
-      .attr("height", point_height * 1.5 * 10)
-      .attr("fill-opacity", 1)
-    
-    d3.select(this.parentNode)
-      .append("text")
-      .text(d => d.title)
-    /*
-    
-    // Get the exact position of the SVG rectangle
-    const box = this.getBoundingClientRect();
-    const x = box.left + window.scrollX - 1;
-    const y = box.top + window.scrollY - 1; 
-    
-    popup
-      .style("width", box.width - 3 + "px")
-      .style("height", box.height - 3 + "px")
-      .style("opacity", 1)
-      .style("left", x + "px")
-      .style("top", y + "px")
-      // .transition()
-      // .duration("400")
-      // .style("width", "200px")
-      // .style("height", "200px")
-    
-    */
-  }
 }
 
 // TODO: Here's the weird new strategy
@@ -351,15 +346,20 @@ svg.append("g")
   .enter()
   .append("g")
   .append("rect")
+    .classed("grid-point", true)
     .attr("x", d => x(d.x) - (3 * stroke_width))
     .attr("y", d => y(d.y) - (3 * stroke_width))
-    .attr("width", 2)
-    .attr("height", 2)
+    .attr("data-original-x", d => x(d.x) - (3 * stroke_width))
+    .attr("data-original-y", d => y(d.y) - (3 * stroke_width))
+    .attr("data-expand-dir-x", d => (d.x > middle_col) ? "left" : "right")
+    .attr("data-expand-dir-y", d => (d.y > middle_row) ?  "down" : "up")
+    .attr("width", point_width)
+    .attr("height", point_height)
+    // TODO: Move these into the `light/dark.scss` as classes
     .attr("stroke", offblack)
     .attr("stroke-width", stroke_width)
     .attr("fill", offwhite)
     .attr("fill-opacity", 0)
-    .classed("grid-point", true)
     .on("mouseover", mouseover)
     .on("mouseleave", mouseleave)
 
