@@ -15,6 +15,10 @@
 /* <--- Main page grid points ---> */
 /* <--- TODO: Find a way to provide page specific CSS ---> */
 
+.grid-point {
+  fill-opacity: 0;
+}
+
 /* 
 The text of each grid-point is hidden by default and only revealed once a
 grid-point is hovered over. Since the <point-title> and <point-text> will
@@ -33,6 +37,18 @@ prevent the hidden text from activiting the hover event of it's parent.
   font-weight: var(--weightregular);
   fill: var(--offblack);
   opacity: 0;
+}
+
+.point-link {
+  pointer-events: none;
+}
+
+.point-link:hover {
+  fill: var(--lightblue);
+}
+
+.point-link:hover .point-text {
+  fill: var(--lightblue);
 }
 
 /* <--- Align the navbar and body margins ---> */

@@ -32,6 +32,15 @@ Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I
 
 My research interests include reproducibility in social science research, causal inference, and statistical software design. Click the black boxes ↓ to preview some of my personal projects.
 
+<label>
+  Group
+  <select class="group-select">
+    <option value=1 selected>1</option>
+    <option value=2>2</option>
+    <option value=3>3</option>
+  </select>
+</label>
+
 ```{r load-posts}
 #| include = FALSE
 
@@ -41,6 +50,9 @@ library(here)
 posts_directory <- here::here("posts")
 posts_folders_relative_paths <- file.path("posts", dir(posts_directory))
 posts_paths <- here::here(posts_directory, dir(posts_directory), "index.qmd")
+
+# TODO: This needs to be adjusted to not be local host
+href_posts_root <- "http://localhost:5788/"
 
 # Parse the YAML frontmatter of a post at `path` and return a data.frame.
 # Attempts to parse only up to line `n` (default `n = 25` should be sufficient).
@@ -71,7 +83,8 @@ read_post_yaml <- function(path, n = 25) {
 
 # Pass the metadata onto OJS
 posts_metadata <- do.call(rbind, lapply(posts_paths, read_post_yaml))
-posts_metadata$relative_folder_path <- posts_folders_relative_paths
+posts_metadata$post_href <- paste0(href_posts_root, posts_folders_relative_paths, "/")
+posts_metadata$idx <- sample(1:3, size = nrow(posts_metadata), replace = TRUE)
 ojs_define(posts_metadata)
 ```
 
@@ -105,7 +118,7 @@ height = n_rows * 10;
 // point on mouse hover.
 point_title_size = 3;
 point_text_size = 2;
-maximum_chars_per_line = 60;
+maximum_chars_per_line = 50;
 point_width = 2;
 point_height = 2;
 
@@ -122,10 +135,8 @@ svg = d3.select("#projects-grid")
   .attr("viewBox", [0, 0, width, height])
   .attr("style", "max-width: 100%; height: auto;");
 
-// Use the SVG <use> feature to control which grid point is rendered on top
-use = svg
-  .append("use")
-  .attr("xlink:href", "")
+// Make a container for the projects points to live
+project_points = svg.append("g").classed("project-points", true);
 
 // Translates the full width into `n_cols` grid lengths
 x = d3.scaleLinear()
@@ -159,8 +170,8 @@ sample_posts = d3.shuffle(transpose(posts_metadata))
 // For each grid-point we need to dynamically create it's size (when expanded)
 // to allocate enough vertical space to fit every line of text in the grid-point
 // description. We call this on every grid-point container (after they are
-// created below) to create the grid-points associated text elements as sibling
-// nodes and inform the grid-point (via data attributes) of the size it should
+// created below) to create the grid-points' associated text elements as sibling
+// nodes and inform each grid-point (via data attributes) of the size it should
 // expand to in order to fit all of it's description text.
 add_grid_point_text = function(d) {
   // We're acting on the parent <g> container, which is `this` but we really 
@@ -220,6 +231,7 @@ add_grid_point_text = function(d) {
       line = test_line
     }
   }
+  
   // We'll have one final line to append at the end of the process
   if (line != "") {
     parent
@@ -229,14 +241,31 @@ add_grid_point_text = function(d) {
       .attr("x", textbox_x)
       .attr("y", line_y)
       .attr("font-size", point_text_size)
+    
+    line_y += line_height;
+    n_lines += 1;
   }
+  
+  // Add the "Read More ->" hyperlink
+   parent
+      .append("a")
+      .attr("href", d => d.post_href)
+      .classed("point-link", true)
+      .append("text")
+      .classed("point-text", true)
+      .attr("x", textbox_x)
+      .attr("y", line_y + line_height)
+      .attr("font-size", point_text_size)
+      .text("Read More →");
+  
+  n_lines += 1;
   
   // Calculate the total width and height required for the expanded grid-point.
   // By default, the grid-point will expand towards the bottom-left of the page.
   // To expand in another direction (e.g. up-right), we offset the x, y position
   // of the point as we expand.
   const expanded_width = maximum_chars_per_line + point_width;
-  const expanded_height = (n_lines * line_height) + (point_title_size * 4) + point_text_size;
+  const expanded_height = (n_lines * line_height) + (point_title_size * 4);
   const x_offset = (expand_dir_x === "right") ? 0 : expanded_width - point_width;
   const y_offset = (expand_dir_y === "down") ? 0 : expanded_height - point_height;
 
@@ -284,6 +313,11 @@ mouseenter = function(d) {
   parent
     .raise()
     
+  // Make the link text interact-able (doesn't have pointer events by default)
+  parent
+    .selectAll(".point-link .point-text")
+    .style("pointer-events", "auto")
+    
   // Expand the grid point, offsetting the (x, y) position as needed
   grid_point
     .transition()
@@ -292,7 +326,7 @@ mouseenter = function(d) {
     .attr("y", function() { return d3.select(this).attr("data-expanded-y"); })
     .attr("width", function() { return d3.select(this).attr("data-expanded-width"); })
     .attr("height", function() { return d3.select(this).attr("data-expanded-height"); })
-    .attr("fill-opacity", 1)
+    .style("fill-opacity", 1)
     // Not including a transition (e.g. fade) for the text because it's too easy
     // (if you wiggle the mouse a lot) to un-align the grid-point and grid-text
     // transitions.
@@ -307,16 +341,23 @@ mouseenter = function(d) {
 
 mouseleave = function(d) {
   // Hide any point text or titles from the grid
-  svg
+  project_points
     .selectAll(".point-title")
     .style("opacity", 0)
-  svg
+  project_points
     .selectAll(".point-text")
     .style("opacity", 0)
+  
+  // Make the link text non-interact-able
+  project_points
+    .selectAll(".point-link .point-text")
+    .style("pointer-events", "none")
   
   // De-expand the grid-point to it's original width
   d3.select(this)
     .select(".grid-point")
+    // Turn off pointer events until this transition is finished
+    .style("pointer-events", "none")
     .transition()
     .duration("300")
     // If the point expands anywhere except towards the bottom-left, then the
@@ -325,43 +366,159 @@ mouseleave = function(d) {
     .attr("y", function() { return d3.select(this).attr("data-original-y"); })
     .attr("width", point_width)
     .attr("height", point_height)
-    .attr("fill-opacity", 0)
+    .style("fill-opacity", 0)
+    .on("end", function() { 
+      return d3.select(this).style("pointer-events", "auto"); 
+    });
 }
 
-// Add the grid points
-svg.append("g")
-  .selectAll("g")
-  .data(sample_posts)
-  .enter()
-  .append("g")
-  .classed("grid-point-container", true)
-  .on("mouseenter", mouseenter)
-  .on("mouseleave", mouseleave)
-  .call(g => g.append("rect")
-    .classed("grid-point", true)
-    .attr("id", (d, i) => "point" + i)
-    .attr("x", d => x(d.x) - (3 * stroke_width))
-    .attr("y", d => y(d.y) - (3 * stroke_width))
-    .attr("data-original-x", d => x(d.x) - (3 * stroke_width))
-    .attr("data-original-y", d => y(d.y) - (3 * stroke_width))
-    .attr("data-expand-dir-x", d => (d.x > middle_col) ? "left" : "right")
-    .attr("data-expand-dir-y", d => (d.y > middle_row) ?  "down" : "up")
+// TODO: Read more about the D3 enter, exit, update idea. `enter()` seems good.
+enter = function(data) {
+  // Add the grid points
+  // TODO: This is appending a new "<g>" on each update. We should create a
+  // single "grid-points-mega-container" object and just update that
+  project_points
+    .selectAll("g")
+    .data(data)
+    .enter()
+    .append("g")
+    .classed("grid-point-container", true)
+    .on("mouseenter", mouseenter)
+    .on("mouseleave", mouseleave)
+    .call(g => g.append("rect")
+      .classed("grid-point", true)
+      .attr("id", (d, i) => "point" + i)
+      .attr("x", d => x(d.x) - (3 * stroke_width))
+      .attr("y", d => y(d.y) - (3 * stroke_width))
+      .attr("data-original-x", d => x(d.x) - (3 * stroke_width))
+      .attr("data-original-y", d => y(d.y) - (3 * stroke_width))
+      .attr("data-expand-dir-x", d => (d.x > middle_col) ? "left" : "right")
+      .attr("data-expand-dir-y", d => (d.y > middle_row) ?  "down" : "up")
+      .attr("width", point_width)
+      .attr("height", point_height)
+      // TODO: Move these into the `light/dark.scss` as classes
+      .attr("stroke", offblack)
+      .attr("stroke-width", stroke_width)
+      .attr("fill", offwhite)
+      .attr("fill-opacity", 0)
+    )
+    // Add the grid-point text elements to each grid-point-container
+    .each(add_grid_point_text)
+}
+
+// TODO: This isn't a function of the data, I'm just removing all grid-points
+exit = function(data) {
+  project_points
+    .selectAll(".grid-point-container")
+    .remove();
+}
+
+// TODO: This doesn't work. Think more about how to do the sequenced enter, exit
+// and update. Here's an article that might help, although it's not exactly my
+// use case.
+//
+// https://observablehq.com/@thetylerwolf/day-18-join-enter-update-exit
+//
+// MAKE a simple example, without trying to fill in all the text. Just make
+// the grid boxes move around to the new location and spawn in the new data /
+// remove the old data within a single .join()
+//
+/*
+  .join(
+    enter => enter
+      .append("g")
+      .classed("grid-point-container", true)
+      .on("mouseenter", mouseenter)
+      .on("mouseleave", mouseleave)
+      .etc...,
+    // NOTE: We can simply delay the enter or exit accordingly so we can sync
+    // them being one after another.
+    exit => exit
+      .dont_allow_interaction()
+      // NOTE: We'll need to pass in the new data somehow to the old data
+      // in order to move the old data to a new location before fading away.
+      .move_to_new_location_or_fade(new_data)
+      .remove()
+    )
+*/
+update = function(data) {
+  // 1. Disable interaction with the old grid points and close any open points
+  // 2. Get where the new grid points will be (this is pretty easy from the data)
+  // 3. Shift (transition) the old points to where the new points will appear
+  // 4. Add the new points using `enter()`, calculating the text etc.
+  // 5. Remove the old points
+  // - The update function can be passed the new data, and use this to update
+  //   the locations of some number of old points to the location of the new
+  //   points. Any un-required points can be make to fade out of existance.
+  
+  // Hide any grid-point text which is open and prevent pointer interaction
+  project_points
+    .selectAll(".point-title")
+    .style("opacity", 0)
+  project_points
+    .selectAll(".point-text")
+    .style("opacity", 0)
+  project_points
+    .selectAll(".point-link .point-text")
+    .style("pointer-events", "none")
+  
+  // If for any reason a grid-point is still "open", de-expand it back to it's
+  // original size (quickly).
+  project_points
+    .selectAll(".grid-point")
+    .style("pointer-events", "none")
+    .transition()
+    .duration("100")
+    .attr("x", function() { return d3.select(this).attr("data-original-x"); })
+    .attr("y", function() { return d3.select(this).attr("data-original-y"); })
     .attr("width", point_width)
     .attr("height", point_height)
-    // TODO: Move these into the `light/dark.scss` as classes
-    .attr("stroke", offblack)
-    .attr("stroke-width", stroke_width)
-    .attr("fill", offwhite)
-    .attr("fill-opacity", 0)
-  )
-  // Add the grid-point text elements to each grid-point-container
-  .each(add_grid_point_text)
+    .style("fill-opacity", 0)
+  
+  const grid_points = project_points.selectAll(".grid-point")
+  const n_current_points = grid_points.size()
+  const n_new_points = data.length
+  
+  console.log(grid_points.filter((d, i) => i < n_new_points).size())
+  console.log(grid_points.size())
+  
+  // Shift the old grid-points to the position of the new grid-points and fade
+  // away any extra old grid-points. This will make it appear as though the
+  // points have moved to their new random locations.
+  grid_points
+    .call(
+      // Move up to `n_new_points` existing grid-points to the locations of the 
+      // new grid-points.
+      points => points
+        .filter((d, i) => i < n_new_points)
+        .transition()
+        .duration("200")
+        .attr("x", (d, i) => x(data[i].x) - (3 * stroke_width))
+        .attr("y", (d, i) => y(data[i].y) - (3 * stroke_width))
+    )
+    .call(
+      // Fade out any remaining grid-points which aren't matched to a new point
+      points => points
+        .filter((d, i) => i >= n_new_points)
+        .transition()
+        .duration("200")
+        .style("opacity", 0)
+        // HACK: To make sure the exit and entrance of the new data happens after
+        // this transition, I'm calling enter and exit here.
+        .on("end", function() {
+          exit(data);
+          enter(data);
+        })
+    )
+}
 
 // Add the grid lines
 svg.append("g")
+  .classed("grid-lines", true)
   .attr("stroke", lightblue)
   .attr("stroke-width", stroke_width)
   .call(g => g.append("g")
+    .classed("vertical-lines", true)
     .selectAll("line")
     .data(x.ticks())
     .join("line")
@@ -372,6 +529,7 @@ svg.append("g")
       .attr("y1", margin_top)
       .attr("y2", height - margin_bottom))
   .call(g => g.append("g")
+    .classed("horizontal-lines", true)
     .selectAll("line")
     .data(y.ticks())
     .join("line")
@@ -390,6 +548,57 @@ svg.append("g")
       .attr("x1", margin_left)
       // Extending one stroke width past the margin to fill in the gap
       .attr("x2", width - margin_right + stroke_width));
+
+// TODO: We'll want to filter by category (and include several categories in the
+//       dataset).
+filter_posts = function(data, idx) {
+	return data.filter(function(post) { return post.idx === parseInt(idx); });
+}
+
+// TODO: We'll want to pretty up the group selector a little bit
+post_selector = document.querySelector('.group-select');
+
+// TODO: Here's a great article on update, enter, select!
+// https://observablehq.com/@thetylerwolf/day-18-join-enter-update-exit
+//
+// NOTES:
+// - `.call(g => ...)` is just a way to do "something" e.g. append a child
+//   multiple times to the same selection (e.g. `<g>`). We use it when creating
+//   the grid lines to make both the horizontal and vertical lines in one go.
+// - be careful about what things in D3 return selections, for example, if
+//   we make a `d3.select(this).transition()` we're actually returning the
+//   transition and not the selection
+//
+// TODO: I'm not sure how we want to do update, exit, enter. If we want the
+//       points to move around, we will need to:
+//
+// 1. Disable interaction with the old grid points
+// 2. Get where the new grid points will be (this is pretty easy from the data)
+// 3. Shift (transition) the old points to where the new points will appear
+// 4. Add the new points using `enter()`, calculating the text etc.
+// 5. Remove the old points
+// - The update function can be passed the new data, and use this to update
+//   the locations of some number of old points to the location of the new
+//   points. Any un-required points can be make to fade out of existence.
+post_selector.onchange = function(e) {
+  // TODO: I think we'll need to reference the CURRENT data in here in order
+  // to get the `update()` function to move the points where we need them.
+  var post_idx = e.target.value;
+  var filtered_posts = filter_posts(sample_posts, post_idx);
+
+  // TODO: Find a more idiomatic way to enter, update, and exit
+  // HACK: Right now, update handles `exit()` and `enter()`
+  update(filtered_posts);
+  // exit(filtered_posts);
+  // enter(filtered_posts);
+};
+
+// Add the initial posts
+filtered_posts = filter_posts(sample_posts, post_selector.value);
+enter(filtered_posts);
+
+// Logging
+console.log(sample_posts.map(d => "[" + d.idx +"] " + d.title))
 ```
 
 
