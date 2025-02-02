@@ -17,6 +17,8 @@
 
 .grid-point {
   fill-opacity: 0;
+  fill: var(--offwhite);
+  stroke: var(--offblack);
 }
 
 /* 
