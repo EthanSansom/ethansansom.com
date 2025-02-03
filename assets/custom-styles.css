@@ -15,6 +15,10 @@
 /* <--- Main page grid points ---> */
 /* <--- TODO: Find a way to provide page specific CSS ---> */
 
+.grid-lines {
+  stroke: var(--lightblue);
+}
+
 .grid-point {
   fill-opacity: 0;
   fill: var(--offwhite);
