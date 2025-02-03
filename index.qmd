@@ -84,24 +84,16 @@ read_post_yaml <- function(path, n = 25) {
 # Pass the metadata onto OJS
 posts_metadata <- do.call(rbind, lapply(posts_paths, read_post_yaml))
 posts_metadata$post_href <- paste0(href_posts_root, posts_folders_relative_paths, "/")
-posts_metadata$idx <- sample(1:3, size = nrow(posts_metadata), replace = TRUE)
+posts_metadata$idx <- c(1, 1, 1, 1, 2, 2, 2, 2)
+posts_metadata$post_id <- seq(nrow(posts_metadata))
 ojs_define(posts_metadata)
 ```
 
 
 ```{ojs}
 //| echo: false
-// output: false // TODO: Add back
+//| output: false
 d3 = require("d3");
-
-// TODO:
-// FIGURE OUT HOW TO UPDATE ON FILTER!!!
-// I think the key issue is that I'm trying to rejoin data to a selection that
-// already has data associated with it. So maybe I do want .join(update, enter, exit)?
-//
-// Look at this post on stack AND the comments. It mentions
-// transitioning old points to new locations:
-// https://stackoverflow.com/questions/22913145/how-to-update-selection-with-new-data-in-d3
 
 // TODO: You'll want to set up a custom class for these SVGs (and include the
 // class as an attribute), so you can set the light/darkmode color using your
@@ -140,6 +132,11 @@ max_chars_per_text_line = 50;
 max_chars_per_title_line = 30;
 popup_x_margin = point_width * 2;
 popup_y_margin = point_height * 2;
+
+// How long should transition events take (in milliseconds)?
+data_enter_fade_duration = 300;
+data_exit_fade_duration = 300;
+data_exit_shift_duration = 500;
 
 /* <--- Helpers ---> */
 
@@ -336,69 +333,165 @@ svg = d3.select("#projects-grid")
   .attr("viewBox", [0, 0, width, height])
   .attr("style", "max-width: 100%; height: auto;");
 
-// Add the grid points
-post_grid_points = svg.append("g")
+// Create a container for the grid-points
+post_grid_points_container = svg
+  .append("g")
   .classed("post-grid-points-container", true)
-  .selectAll("g")
-  .data(sample_posts)
-  .join(
-    enter => enter
-      .append("g")
-      .classed("grid-point-container", true)
-      .on("mouseenter", grid_point_container_mouseenter)
-      .on("mouseleave", grid_point_container_mouseleave)
-      .call(g => g.append("rect")
-        .classed("grid-point", true)
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .attr("width", point_width)
-        .attr("height", point_height)
-        .attr("stroke-width", stroke_width)
-      )
-      .call(g => g.append("g")
-        .classed("title-text-container", true)
-        .selectAll("text")
-        .data(d => d.title_lines_data)
-        .enter()
-        .append("text")
-        .classed("point-title", true)
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .text(d => d.text)
-        .style("font-size", title_size)
-      )
-      .call(g => g.append("g")
-        .classed("summary-text-container", true)
-        .selectAll("text")
-        .data(d => d.summary_lines_data)
-        .enter()
-        .append("text")
-        .classed("point-text", true)
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .text(d => d.text)
-        .style("font-size", text_size)
-      )
-      .call(g => g.append("g")
-        .classed("link-text-container", true)
-        .selectAll("text")
-        .data(d => d.post_link_line_data)
-        .enter()
-        .append("a")
-        .classed("point-link", true)
-        .attr("href", d => d.href)
-        .append("text")
-        .classed("point-text", true)
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .text(d => d.text)
-        .style("font-size", text_size)
-      )
-  );
+
+// Updates the grid-points using `data`
+update = function(data, first = false) {
+  post_grid_points_container
+    .selectAll("g")
+    .data(data, d => d.post_id) // Important to key on the unique post ID
+    .join(
+      enter => enter
+        .append("g")
+        .classed("grid-point-container", true)
+        .on("mouseenter", grid_point_container_mouseenter)
+        .on("mouseleave", grid_point_container_mouseleave)
+        .call(g => {
+          const grid_points = g.append("rect")
+            .classed("grid-point", true)
+            .attr("x", d => d.x)
+            .attr("y", d => d.y)
+            .attr("width", point_width)
+            .attr("height", point_height)
+            .attr("stroke-width", stroke_width)
+          
+          // If we're updating the dataset, give the exiting grid-points time to
+          // finish their transition before revealing the entering grid-points.
+          if (!first) {
+            grid_points
+              .style("opacity", 0)
+              .transition()
+              .delay(Math.max(data_exit_shift_duration, data_exit_fade_duration))
+              .duration(data_enter_fade_duration)
+              .style("opacity", 1)
+          }
+        })
+        .call(g => g.append("g")
+          .classed("title-text-container", true)
+          .selectAll("text")
+          .data(d => d.title_lines_data)
+          .enter()
+          .append("text")
+          .classed("point-title", true)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .text(d => d.text)
+          .style("font-size", title_size)
+        )
+        .call(g => g.append("g")
+          .classed("summary-text-container", true)
+          .selectAll("text")
+          .data(d => d.summary_lines_data)
+          .enter()
+          .append("text")
+          .classed("point-text", true)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .text(d => d.text)
+          .style("font-size", text_size)
+        )
+        .call(g => g.append("g")
+          .classed("link-text-container", true)
+          .selectAll("text")
+          .data(d => d.post_link_line_data)
+          .enter()
+          .append("a")
+          .classed("point-link", true)
+          .attr("href", d => d.href)
+          .append("text")
+          .classed("point-text", true)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .text(d => d.text)
+          .style("font-size", text_size)
+        ),
+      update => {
+        // TODO: You can probably delete this at some point
+      },
+      exit => {
+        if (exit.empty()) {
+          return exit;
+        }
+        // As in the mouse-leave event, return any exiting point to it's closed
+        // position and prevent interaction with exiting grid-points via
+        // pointer-events.
+        exit
+          .selectAll(".point-title")
+          .style("opacity", 0)
+        exit
+          .selectAll(".point-text")
+          .style("opacity", 0)
+        exit
+          .selectAll(".point-link .point-text")
+          .style("pointer-events", "none")
+        exit
+          .select(".grid-point")
+          .style("pointer-events", "none")
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("width", point_width)
+          .attr("height", point_height)
+        
+        // We want to shift over up to `n_points_entering` of the exiting grid
+        // points to the location of the entering grid-points before we remove
+        // all of the exiting grid-points - to make it appear as though the
+        // points just slid over to their new locations.
+        //
+        // If more grid-points are exiting than entering, we fade out the excess
+        // exiting grid-point.
+        const n_points_exiting = exit.selectAll(".grid-point").size();
+        const n_points_entering = data.length; // TODO: Edit if we allow intersection
+        const n_points_to_shift = Math.min(n_points_entering, n_points_exiting);
+        const n_points_to_fade = n_points_exiting - n_points_to_shift;
+          
+        // Select the set of nodes to (grid-points) to shift and fade. Note, I
+        // tried `exit.filter((d, i) => i < n)`, but the exit selection has more
+        // elements than just the grid-point-containers.
+        const exiting_grid_points = exit.selectAll(".grid-point")  
+        const shifting_grid_points = d3.selectAll(
+          exiting_grid_points.nodes().slice(0, n_points_to_shift)
+        )
+        const fading_grid_points = d3.selectAll(
+          exiting_grid_points.nodes().slice(n_points_to_shift, n_points_exiting + 1)
+        )
+        
+        // Shift these grid-points to the locations of the entering grid-points
+        shifting_grid_points
+          .data(data.slice(0, n_points_to_shift))
+          .transition()
+          .duration(data_exit_shift_duration)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+        
+        fading_grid_points
+          .transition()
+          .duration(data_exit_fade_duration)
+          .style("opacity", 0)
+
+        // Before removing the exiting grid-points we need to ensure that:
+        // - The exit fade and shift transitions have finished
+        // - The entering grid-points have fully faded in (potentially on top of 
+        //   the shifted exiting grid-points)
+        exit
+          .transition()
+          .delay(
+            Math.max(data_exit_shift_duration, data_exit_fade_duration) 
+            + data_enter_fade_duration 
+            // 100 millisecond buffer because there's a tiny flicker otherwise
+            + 100
+          )
+          .remove()
+      }
+    );
+}
 
 // Add the grid lines
 svg.append("g")
   .classed("grid-lines", true)
+  .lower() // Make sure the grid is below the grid-points
   .attr("stroke", lightblue)
   .attr("stroke-width", stroke_width)
   // Add the vertical grid-lines
@@ -425,9 +518,9 @@ svg.append("g")
       .attr("x1", margin_left)
       .attr("x2", width - margin_right)
   )
-  // HACK: Without this there's a tiny gap in the bottom left corner. The
-  // example has this issue as well, not sure of a better fix yet.
+  // HACK: Without this there's a `stroke_width` gap in the bottom left corner
   .call(g => g.append("g")
+    .classed("extra-horizontal-lines", true)
     .selectAll("line")
     .data(y_axis.ticks().slice(0, 1))
     .join("line")
@@ -438,7 +531,25 @@ svg.append("g")
       .attr("x2", width - margin_right + stroke_width)
   );
   
-sample_posts
+// Add the initial grid-points (some of them)
+update(filter_posts(sample_posts, "1"), true);
+
+// Define a selector to filter posts
+
+// TODO: We'll want to filter by category (include several categories)
+filter_posts = function(data, idx) {
+	return data.filter(function(post) { return post.idx === parseInt(idx); });
+}
+
+// TODO: We'll want to pretty up the group selector a little bit
+post_selector = document.querySelector('.group-select');
+
+post_selector.onchange = function(e) {
+  const post_idx = e.target.value;
+  const filtered_posts = filter_posts(sample_posts, post_idx);
+  update(filtered_posts);
+};
+
 ```
 
 
