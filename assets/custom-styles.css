@@ -1,104 +1,17 @@
-/* <--- Variables ----> */
+/* Variables -----------------------------------------------------------------*/
 
 :root {
   --weightregular: 400;
   --weightsemibold: 500;
   --weightbold: 700;
   --weightextrabold: 900;
-
-
-  --offblack: #1E1E1E;
-  --offwhite: #FFFBFC;
-  --lightblue: #96BFE3;
 }
 
-/* <--- Main page grid points ---> */
-/* <--- TODO: Find a way to provide page specific CSS ---> */
-
-.grid-lines {
-  stroke: var(--lightblue);
-}
-
-.grid-point {
-  fill-opacity: 0;
-  fill: var(--offwhite);
-  stroke: var(--offblack);
-}
-
-/* 
-The text of each grid-point is hidden by default and only revealed once a
-grid-point is hovered over. Since the <point-title> and <point-text> will
-be larger than an unhovered grid-point, we set `pointer-events: none` to
-prevent the hidden text from activiting the hover event of it's parent.
-*/
-.point-title {
-  pointer-events: none;
-  font-weight: var(--weightbold);
-  fill: var(--offblack);
-  opacity: 0;
-}
-
-.point-text {
-  pointer-events: none;
-  font-weight: var(--weightregular);
-  fill: var(--offblack);
-  opacity: 0;
-}
-
-.point-link {
-  pointer-events: none;
-}
-
-.point-link:hover {
-  fill: var(--lightblue);
-}
-
-.point-link:hover .point-text {
-  fill: var(--lightblue);
-}
-
-.group-select {
-  border: none;
-  text-decoration: underline;
-  /* Removes the downwards arrow after the selection text */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-}
-
-.group-select:focus {
-  border: none;
-  outline: none;
-}
-
-p:has(> .filter-label) {
-  margin: 0px 0px;
-}
-
-/* Compensate for Quarto's default of removing padding */
-@media (max-width: 991px) {
-  p:has(> .filter-label) {
-    margin-bottom: 14px;
-  }
-}
-
-/* <--- Align the navbar and body margins ---> */
-
-/*
-Rather than fuss too much with aligning the navbar to the default
-`page-layout: full` setting, I specify a custom page layout for
-the main, About, Posts, and Packages page in which I manually align
-the body and navbar margins.
-*/
+/* Navbar and Custom Layout --------------------------------------------------*/
 
 .page-layout-custom {
   margin-left: 15vw;
   margin-right: 15vw;
-}
-
-.navbar {
-  padding-top: 7vh;
-  padding-bottom: 6vh;
 }
 
 #quarto-header>nav {
@@ -118,42 +31,16 @@ the body and navbar margins.
   }
 }
 
-/* Switch hamburger menu from being on the left to the right */
+.navbar {
+  padding-top: 7vh;
+  padding-bottom: 4vh;
+}
+
 @media (max-width: 991px) {
-  .navbar-container.container-fluid {
-    flex-direction: row-reverse;/
-    -webkit-flex-direction: row-reverse;
+  .navbar {
+    padding-top: 5vh;
+    padding-bottom: 4vh;
   }
-}
-
-/* <--- Misc ---> */
-
-h3 {
-  font-size: 1.5rem;
-  font-weight: var(--weightbold);
-}
-
-/* Increases the default padding of the Posts listings table from 0.5rm */
-.table>:not(caption)>*>* {
-  padding: 0.75rem 0.75rem;
-}
-
-/* Sets the width of the Title in Posts listings table */
-table td:nth-child(2)  {
-  width: 200px;
-}
-
-/* Sets the left-padding of the first column to 0 in the Posts listings table*/
-thead th:nth-child(1) { padding-left: 0rem; } /* Column title */
-table td:nth-child(1)  { padding-left: 0rem; } /* Column elements */
-
-/* Remove the black box from around the hamburger menu when in focus */
-.navbar-toggler:focus {
-  box-shadow: none;
-}
-
-a.title.listing-title {
-  width: 400px;
 }
 
 .navbar-title {
@@ -161,10 +48,23 @@ a.title.listing-title {
   font-size: 1.5rem;
 }
 
-/* Set the navbar menu text to the same size as the title */
+/* navbar non-title text */
 .menu-text {
   font-weight: var(--weightregular);
   font-size: 1.25rem;
+}
+
+/* Switches hamburger menu from being on the left to the right */
+@media (max-width: 991px) {
+  .navbar-container.container-fluid {
+    flex-direction: row-reverse;/
+    -webkit-flex-direction: row-reverse;
+  }
+}
+
+/* Remove the black box from around the hamburger menu when in focus */
+.navbar-toggler:focus {
+  box-shadow: none;
 }
 
 /* Center aligns the darkmode toggle with the menu text */
@@ -172,28 +72,27 @@ a.title.listing-title {
   vertical-align: -.3em;
 }
 
-a.black-link {
-  color: var(--offblack);
-  text-decoration: underline;
+/* Font Sizing ---------------------------------------------------------------*/
+
+#title-block-header {
+  margin: 0px 0px;
+}
+
+.quarto-title {
+  margin: 0px 0px;
+}
+
+p {
+  font-weight: var(--weightregular);
+  font-size: clamp(0.5rem, 3vw, 1rem);
 }
 
 h1 {
   font-weight: var(--weightextrabold);
-  font-size: 9rem;
-  padding-bottom: 2rem;
+  font-size: clamp(3rem, 18vw, 8rem);
 }
 
-@media (max-width: 991px) {
-  h1 {
-    font-weight: var(--weightextrabold);
-    font-size: 4rem;
-    padding-bottom: 0rem;
-  }
+h3 {
+  font-size: clamp(1rem, 4vw, 1.5rem);
+  font-weight: var(--weightbold);
 }
-
-/*
-a:link { color: var(--offblack); text-decoration:underline; }
-a:visited { color: var(--offblack); text-decoration:none; }
-a:hover { color: var(--offblack); text-decoration:underline; }
-a:active { color: var(--offblack); text-decoration:underline; }
-*/

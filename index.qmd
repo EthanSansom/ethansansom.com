@@ -2,33 +2,7 @@
 page-layout: custom
 ---
 
-```{r notes}
-#| echo = FALSE
-
-# TODO:
-# IMPORTANT:
-# See here: https://stackoverflow.com/questions/15649244/responsive-font-size-in-css
-# For a responsive font-size suggestion from ashuvssut (not at the top).
-#
-# // Clamp font size
-# h1{
-#  font-size : clamp(2rem, 10vw, 5rem);
-# }
-#
-# // Clamp font awesome icon size (we should use these)
-# .fa-random-icon {
-#   font-size: clamp( 15rem, 80vw, 80vh)   
-# }
-#
-# TODO: Make a clearer system for the sizing (and relative sizing)
-# of all the fonts in the ecosystem:
-# - body
-# - page title
-# - navbar title + navbar logo text
-# - headers
-```
-
-Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="black-link">Open Research Lab</a>, a San Fransisco based research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="black-link">Clean Air Partnership</a>, a charitable environmental organization.
+Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="mono-link">Open Research Lab</a>, a San Fransisco based research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="mono-link">Clean Air Partnership</a>, a charitable environmental organization.
 
 <p style = "padding-top:0px;">My research interests include reproducibility in social science research, causal inference, and statistical software design. Interact with the black boxes ↓ to preview some of my personal projects.</p>
 
@@ -92,10 +66,6 @@ ojs_define(posts_metadata)
 //| output: false
 d3 = require("d3");
 
-// TODO: You'll want to set up a custom class for these SVGs (and include the
-// class as an attribute), so you can set the light/darkmode color using your
-// .scss scripts
-
 /* <--- Constants ---> */
 
 // NOTE: The sizes (e.g. `stroke_width`, `point_width`) are relative to the
@@ -103,21 +73,15 @@ d3 = require("d3");
 // `width` x `height` (the view-box expands to fill the page margin width, but
 // all sizes defined here are relative to this `width` by `height` setting).
 
-// Grid dimensions
+// Mobile detection
 
-// TODO: There is a more comprehensive regex for mobile in that Stack 
-// conversation - use if required.
-//
+// NOTE: There's a more complete regex for mobile in that Stack link if required
 // From: https://stackoverflow.com/questions/11381673/detecting-a-mobile-browser
 is_mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-// TODO: We could also have an event listener for a certain screen width which
-// just re-generates all of the data and the SVG, but it would require some
-// legwork.
-//
-// Attempt to switch the orientation if we think we're on mobile
-n_cols = is_mobile ? 6 : 16;
-n_rows = is_mobile ? 8 : 7;
+// Grid dimensions
+n_cols = is_mobile ? 7 : 16; // Format long on mobile, wide otherwise
+n_rows = is_mobile ? 7 : 7;
 middle_col = Math.floor(n_cols / 2);
 middle_row = Math.floor(n_rows / 2);
 width = n_cols * 10;
@@ -138,7 +102,7 @@ margin_left = 0;
 // relative to one another such that the SVG text fits within an expanded grid
 // point on mouse hover.
 title_size = 3.5;
-text_size = 2;
+text_size = 2.5;
 title_line_spacing = title_size * 1.5;
 text_line_spacing = text_size * 1.5;
 max_chars_per_text_line = is_mobile ? 30 : 50;
@@ -154,7 +118,7 @@ data_exit_delay_duration = 200;
 popup_expand_duration = 300;
 popup_contract_duration = 300;
 
-// Which categories of posts do we want to include and how many to show at a time?
+// Which post categories to include and how many posts to plot at a time?
 post_category_options = [
   "package",
   "{rlang}",
@@ -245,10 +209,12 @@ filter_posts_and_assign_grid_positions = function(data) {
 
   var all_x = d3.range(1, n_cols);
   var all_y = d3.range(1, n_rows);
+  
   // If we're on mobile, avoid assigning grid points near the center to prevent
   // clipping of the grid pop-up.
   if (is_mobile) {
-    all_x = all_x.filter(x => x < (middle_col - 1) || x > (middle_col + 1))
+    all_x = all_x.filter(x => x < (middle_col - 1) || x > (middle_col + 1));
+    all_y = all_y.filter(y => y < (middle_row - 1) || y > (middle_row + 1));
   }
   const all_coords = all_x.flatMap(x => all_y.map(y => `${x},${y}`));
 
@@ -339,7 +305,7 @@ posts = subset_posts
     const post_link_line_y = y_plot + text_y_offset;
 
     // Calculate the dimensions and position of the grid-point pop-up
-    const popup_width = max_chars_per_text_line + (2 * popup_x_margin);
+    const popup_width = (max_chars_per_text_line * text_size / 2) + (2 * popup_x_margin);
     const popup_height = text_y_offset + popup_y_margin;
     
     // The pop-up expands towards the quadrant opposite it's grid-point so that
@@ -628,7 +594,7 @@ update = function(data, previous_data, first = false) {
           exiting_grid_points.nodes().slice(0, n_points_to_shift)
         );
         const fading_grid_points = d3.selectAll(
-          exiting_grid_points.nodes().slice(n_points_to_shift, n_points_exiting + 1)
+          exiting_grid_points.nodes().slice(n_points_to_shift, n_points_exiting)
         );
         
         // Shift these grid-points to the locations of the entering grid-points
@@ -689,17 +655,8 @@ svg.append("g")
       .attr("y1", d => (stroke_width / 2) + y_axis(d))
       .attr("y2", d => (stroke_width / 2) + y_axis(d))
       .attr("x1", margin_left)
-      .attr("x2", width - margin_right)
-  )
-  // HACK: Without this there's a `stroke_width` gap in the bottom left corner
-  .call(g => g.append("g")
-    .classed("extra-horizontal-lines", true)
-    .append("line")
-      .attr("y1", d => (stroke_width / 2) + y_axis(0))
-      .attr("y2", d => (stroke_width / 2) + y_axis(0))
-      .attr("x1", margin_left)
-      // Extending one stroke width past the margin to fill in the gap
-      .attr("x2", width - margin_right + stroke_width)
+      // HACK: Extend the first line to fill a `stroke_width` wide gap in the grid
+      .attr("x2", (d, i) => width - margin_right + (i == 0 ? stroke_width : 0))
   );
 
 /* <--- Filtering ---> */
@@ -752,7 +709,7 @@ update(filter_posts(posts, default_post_category_option), posts, true);
 ::: g-col-6
 <h3>About this Website</h3>
 
-This website is hosted on Netlify, programmed in R, using Quarto. See this <a href="https://github.com/EthanSansom/ethansansom.com" class="black-link">github repository</a> for the source code. The dynamic elements on this page are programmed using the D3 Javascript library.
+This website is hosted on Netlify, programmed in R, using Quarto. See this <a href="https://github.com/EthanSansom/ethansansom.com" class="mono-link">github repository</a> for the source code. The dynamic elements on this page are programmed using the D3 Javascript library.
 :::
 
 ::: g-col-6

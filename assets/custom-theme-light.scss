@@ -31,6 +31,8 @@ $link-color: $offblack; // hyperlinks
 
 /*-- scss:rules --*/
 
+/* <a> -----------------------------------------------------------------------*/
+
 a.nav-link:visited span {
   color: $offblack;
 }
@@ -47,7 +49,85 @@ a.title.listing-title:hover {
   color: $lightblue;
 }
 
-a.black-link:hover {
+a.mono-link {
+  color: $offblack;
+  text-decoration: underline;
+}
+
+a.mono-link:hover {
   color: $lightblue;
   text-decoration: underline;
+}
+
+/* D3 Plot Grid --------------------------------------------------------------*/
+
+/* 
+NOTE: This is currently (Feb 3, 2025) only relevant to the index.qmd page, but
+I may use this same grid as a kind of standard throughout the website.
+*/
+
+/* Grid Point and Lines ----*/
+
+.grid-lines {
+  stroke: $lightblue;
+}
+
+.grid-point {
+  fill-opacity: 0;
+  fill: $offwhite;
+  stroke: $offblack;
+}
+
+.point-title {
+  pointer-events: none;
+  font-weight: $weightbold;
+  fill: $offblack;
+  opacity: 0;
+}
+
+.point-text {
+  pointer-events: none;
+  font-weight: $weightregular;
+  fill: $offblack;
+  opacity: 0;
+}
+
+.point-link {
+  pointer-events: none;
+}
+
+.point-link:hover {
+  fill: $lightblue;
+}
+
+.point-link:hover .point-text {
+  fill: $lightblue;
+}
+
+/* Filter Selection ----*/
+
+.group-select {
+  border: none;
+  text-decoration: underline;
+  /* Removes the downwards arrow after the selection text */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.group-select:focus {
+  border: none;
+  outline: none;
+}
+
+/* Quarto wraps the <select> object in <p>, this sets that wrapper's margin */
+p:has(> .filter-label) {
+  margin: 0px 0px;
+}
+
+/* Compensate for Quarto's default of removing padding */
+@media (max-width: 991px) {
+  p:has(> .filter-label) {
+    margin-bottom: 14px;
+  }
 }
