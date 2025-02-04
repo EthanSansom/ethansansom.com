@@ -57,6 +57,31 @@ prevent the hidden text from activiting the hover event of it's parent.
   fill: var(--lightblue);
 }
 
+.group-select {
+  border: none;
+  text-decoration: underline;
+  /* Removes the downwards arrow after the selection text */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.group-select:focus {
+  border: none;
+  outline: none;
+}
+
+p:has(> .filter-label) {
+  margin: 0px 0px;
+}
+
+/* Compensate for Quarto's default of removing padding */
+@media (max-width: 991px) {
+  p:has(> .filter-label) {
+    margin-bottom: 14px;
+  }
+}
+
 /* <--- Align the navbar and body margins ---> */
 
 /*
@@ -81,7 +106,7 @@ the body and navbar margins.
   padding-right: 15vw;
 }
 
-@media (max-width: 500px) {
+@media (max-width: 991px) {
   #quarto-header>nav {
     padding-left: 1em;
     padding-right: 1em;
