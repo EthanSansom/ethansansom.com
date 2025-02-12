@@ -82,7 +82,7 @@
   margin: 0px 0px;
 }
 
-p {
+span, a, p {
   font-weight: var(--weightregular);
   font-size: clamp(0.5rem, 3vw, 1rem);
 }

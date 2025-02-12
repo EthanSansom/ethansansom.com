@@ -1,5 +1,8 @@
 /*-- scss:defaults --*/
 
+// NOTE: Dark theme resources: 
+// https://m2.material.io/design/color/dark-theme.html
+
 // Import fonts
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
@@ -11,10 +14,10 @@ $weightbold: 700;
 $weightsemibold: 500;
 $weightregular: 400;
 
-// Define colors
-$offblack: #FFFBFC;
-$offwhite: #1E1E1E;
-$lightblue: #96BFE3;
+// Define colors (names are in reference to the lightmode equivilants)
+$offblack: #EEEEEC; // #FFFFFF; // #FFFBFC
+$offwhite: #18191B; // #1E1E1E;
+$lightblue: #96BFE3; // #1174C7; // #BD493C;
 
 // navbar
 $navbar-bg: $offwhite; // navbar
@@ -30,6 +33,8 @@ $footer-bg: $offwhite; // footer
 $link-color: $offblack; // hyperlinks 
 
 /*-- scss:rules --*/
+
+/* <a> -----------------------------------------------------------------------*/
 
 a.nav-link:visited span {
   color: $offblack;
@@ -47,7 +52,90 @@ a.title.listing-title:hover {
   color: $lightblue;
 }
 
-a.black-link:hover {
+a.mono-link {
+  color: $offblack;
+  text-decoration: underline;
+}
+
+a.mono-link:hover {
   color: $lightblue;
   text-decoration: underline;
+}
+
+/* D3 Plot Grid --------------------------------------------------------------*/
+
+/* 
+NOTE: This is currently (Feb 3, 2025) only relevant to the index.qmd page, but
+I may use this same grid as a kind of standard throughout the website.
+*/
+
+/* Grid Point and Lines ----*/
+
+.grid-lines {
+  stroke: $lightblue;
+}
+
+.grid-point {
+  fill-opacity: 0;
+  fill: $offwhite;
+  stroke: $offblack;
+}
+
+.point-title {
+  pointer-events: none;
+  font-weight: $weightbold;
+  fill: $offblack;
+  opacity: 0;
+}
+
+.point-text {
+  pointer-events: none;
+  font-weight: $weightregular;
+  fill: $offblack;
+  opacity: 0;
+}
+
+.point-link {
+  pointer-events: none;
+}
+
+.point-link:hover {
+  fill: $lightblue;
+}
+
+.point-link:hover .point-text {
+  fill: $lightblue;
+}
+
+/* Filter Selection ----*/
+
+.group-select {
+  color: $offblack;
+  border: none;
+  text-decoration: underline;
+  /* Removes the downwards arrow after the selection text */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.group-select:hover {
+  color: $lightblue;
+}
+
+.group-select:focus {
+  border: none;
+  outline: none;
+}
+
+/* Quarto wraps the <select> object in <p>, this sets that wrapper's margin */
+p:has(> .filter-label) {
+  margin: 0px 0px;
+}
+
+/* Compensate for Quarto's default of removing padding */
+@media (max-width: 991px) {
+  p:has(> .filter-label) {
+    margin-bottom: 14px;
+  }
 }

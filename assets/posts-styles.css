@@ -5,13 +5,23 @@
   padding: 0.75rem 0.75rem;
 }
 
-/* Sets the width of the title column */
+/* Sets the width of the Title column */
 table td:nth-child(2)  {
   width: 200px;
 }
 
 a.title.listing-title {
   width: 400px;
+}
+
+/* Limit the Description column to 100px tall, truncating text with "..." */
+span.listing-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 100px;
+  text-overflow: ellipsis;
 }
 
 /* Sets the left-padding of the first column to 0 in the Posts listings table*/

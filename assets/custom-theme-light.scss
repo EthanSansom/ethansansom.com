@@ -120,6 +120,10 @@ I may use this same grid as a kind of standard throughout the website.
   outline: none;
 }
 
+.group-select:hover {
+  color: $lightblue;
+}
+
 /* Quarto wraps the <select> object in <p>, this sets that wrapper's margin */
 p:has(> .filter-label) {
   margin: 0px 0px;
