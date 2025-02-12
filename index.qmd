@@ -4,7 +4,10 @@ page-layout: custom
 
 Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="mono-link">Open Research Lab</a>, a San Fransisco based research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="mono-link">Clean Air Partnership</a>, a charitable environmental organization.
 
-<p style = "padding-top:0px;">My research interests include reproducibility in social science research, causal inference, and statistical software design. Interact with the black boxes ↓ to preview some of my personal projects.</p>
+<p style = "padding-top:0px;">My research interests include statistical software design, reproducibility in social science research, and causal inference. Interact with the black boxes ↓ to preview some of my personal projects.</p>
+
+<!--TODO: There's a more idiomatic way to add HTML with :::{.id}, do that--->
+<!-- Check this out, seems to be the better way to delcare HTML in Quarto: https://github.com/realworlddatascience/realworlddatascience.github.io/blob/main/index.qmd --->
 
 <!--This is the filter selection for the D3 below--->
 
@@ -25,7 +28,8 @@ posts_folders_relative_paths <- file.path("posts", dir(posts_directory))
 posts_paths <- here::here(posts_directory, dir(posts_directory), "index.qmd")
 
 # TODO: This needs to be adjusted to not be local host
-href_posts_root <- "http://localhost:4943/"
+local_host <- "7290"
+href_posts_root <- paste0("http://localhost:", local_host, "/")
 
 # Parse the YAML frontmatter of a post at `path` and return a data.frame.
 # Attempts to parse only up to line `n` (default `n = 25` should be sufficient).
@@ -450,13 +454,15 @@ update = function(data, previous_data, first = false) {
               .attr("height", point_height)
               .attr("stroke-width", stroke_width);
             
-            // If we're updating the dataset, give the exiting grid-points time to
-            // finish their transition before revealing the entering grid-points.
+            // If we're updating the data, give the exiting grid-points time to
+            // finish transitioning before revealing the entering grid-points.
             if (!first) {
               grid_points
                 .style("opacity", 0)
                 .transition()
                 .delay(
+                  // Only delay the fade-in if there are exiting grid points
+                  (previous_data.length <= 0) ? 0 :
                   Math.max(data_exit_shift_duration, data_exit_fade_duration) 
                   + data_exit_delay_duration
                 )
@@ -655,7 +661,7 @@ svg.append("g")
       .attr("y1", d => (stroke_width / 2) + y_axis(d))
       .attr("y2", d => (stroke_width / 2) + y_axis(d))
       .attr("x1", margin_left)
-      // HACK: Extend the first line to fill a `stroke_width` wide gap in the grid
+      // Extends the first line to fill a `stroke_width` wide gap in the corner
       .attr("x2", (d, i) => width - margin_right + (i == 0 ? stroke_width : 0))
   );
 
@@ -700,10 +706,6 @@ d3.select("#category-filter")
 update(filter_posts(posts, default_post_category_option), posts, true);
 
 ```
-
-
-::: {#projects-grid}
-:::
 
 ::: grid
 ::: g-col-6
