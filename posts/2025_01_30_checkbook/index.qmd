@@ -2,7 +2,7 @@
 title: "checkbook"
 date: "2025-01-30"
 categories: ["package", "{rlang}", "{checkwriter}", "Tidyverse Style Guide"]
-image: "checkbook_hex.png"
+image: "checkbook_hex.svg"
 smallimage: '<img src="posts/2025_01_30_checkbook/checkbook_small.png">'
 description: |
   A collection of fast checks and tests for validating function arguments and objects, written
