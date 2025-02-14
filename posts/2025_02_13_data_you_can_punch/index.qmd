@@ -1,0 +1,237 @@
+---
+title: "Data You Can Punch"
+date: "2025-02-12"
+categories: ["D3", "Data Visualization"]
+# image: "vlightr_hex.png"
+# smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
+description: |
+  Data you can punch.
+summary: |
+  Data you can punch.
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+<br>
+
+This is a test of punch-able data
+
+<!-- Matter.js include, TODO: Add in correct location later --->
+<!-- <script src="matter.js"></script> --->
+
+:::: {#matter-container}
+::::
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// TODO: Read https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
+
+/*
+D3 Interaction with <canvas>
+https://d3-graph-gallery.com/graph/canvas.html
+*/
+
+d3 = require("d3")
+Matter = require("matter-js");
+
+// Constants
+
+offblack = "#1E1E1E";
+offwhite = "#FFFBFC";
+lightblue = "#96BFE3";
+
+width = 600;
+height = 400;
+
+// Prepare the D3.js elements
+
+// Define the SVG view-box
+svg = d3.select("#matter-container")
+  .append("svg")
+  // Force the plot to width/height aspect ratio which fills the parent width
+  .attr("viewBox", [0, 0, width, height])
+  .attr("style", "max-width: 100%; height: auto;");
+
+// Prepare the Matter.js elements
+
+// module aliases
+Engine = Matter.Engine
+Bodies = Matter.Bodies
+Composite = Matter.Composite
+Runner = Matter.Runner
+// Render = Matter.Render
+
+// NOTE: Matter.js allows you to specify your own renderer and runner, so
+// we can use SVG instead of <canvas>
+// - https://github.com/liabru/matter-js/wiki/Rendering
+// - https://github.com/liabru/matter-js/wiki/Running
+
+// Create an engine
+engine = Engine.create();
+
+// Create two boxes and a ground
+boxA = Bodies.rectangle(0, 0, 80, 80);
+boxB = Bodies.rectangle(450, 50, 80, 80);
+ground = Bodies.rectangle(0, 350, 600, 50, { isStatic: true, label: "ground" });
+
+// Add all of the bodies to the world
+Composite.add(engine.world, [boxA, boxB, ground]);
+
+// This will record all physic objects in the scene
+// bodies = Composite.allBodies(engine.world);
+bodies = engine.world.bodies;
+
+// Add each physics object as an SVG
+
+bodies.forEach(body => {
+  const pos = body.position;
+  const label = body.label
+  const color = (label === "ground") ? offblack : lightblue;
+  
+  // At initialization the rectangles bounds will correctly describe it's width
+  // and height (but only if no rotation has been applied)
+  const width = body.bounds.max.x - body.bounds.min.x;
+  const height = body.bounds.max.y - body.bounds.min.y;
+  
+  svg.append('rect')
+    .datum(body) // TODO: I don't think `.datum` is really being used here
+    .attr('id', `box-${body.id}`)
+    .attr('x', pos.x)
+    .attr('y', pos.y)
+    .attr('width', width)
+    .attr('height', height)
+    .attr('fill', color);
+})
+
+
+// run the renderer
+// Render.run(render);
+
+// create runner
+// runner = Runner.create();
+
+// run the engine
+// Runner.run(runner, engine);
+
+// Custom update loop via: https://gist.github.com/mwdchang/a275dd5f878ee1c6453133cc80f49400
+
+/*
+(function run() {
+
+  console.log("Running")
+
+  window.requestAnimationFrame(run);
+  Engine.update(engine, 1000);
+  
+  bodies.forEach(body => {
+    const pos = body.position;
+    svg
+      .select(`#box-${body.id}`)
+      .attr('x', pos.x)
+      .attr('y', pos.y);
+  })
+  
+})();
+*/
+
+/*
+run = function() {
+  console.log("running")
+  while (true) {
+    window.requestAnimationFrame(run);
+    Engine.update(engine, 1000);
+    
+    bodies.forEach(body => {
+      const pos = body.position;
+      svg
+        .select(`#box-${body.id}`)
+        .attr('x', pos.x)
+        .attr('y', pos.y);
+    })
+  }
+}
+*/
+
+/*
+
+run = function() {
+  console.log("RUNNING")
+  window.requestAnimationFrame(run);
+}
+
+// run();
+
+// TODO: The real problem is the OJS is not like JS and seems to hate some
+// of these reactive features like running an animation loop. We'll have to
+// try out some more strategies.
+//
+// https://github.com/liabru/matter-js/blob/master/src/render/Render.js
+// https://observablehq.com/@observablehq/observable-javascript
+(function render() {
+  const bodies = engine.world.bodies;
+  window.requestAnimationFrame(render);
+
+    // context.fillStyle = '#fff';
+    // context.fillRect(0, 0, canvas.width, canvas.height);
+
+  bodies.forEach(body => {
+    const pos = body.position;
+    const label = body.label
+    const color = (label === "ground") ? offblack : lightblue;
+    
+    // At initialization the rectangles bounds will correctly describe it's width
+    // and height (but only if no rotation has been applied)
+    const width = body.bounds.max.x - body.bounds.min.x;
+    const height = body.bounds.max.y - body.bounds.min.y;
+    
+    svg.append('rect')
+      .datum(body) // TODO: I don't think `.datum` is really being used here
+      .attr('id', `box-${body.id}`)
+      .attr('x', pos.x)
+      .attr('y', pos.y)
+      .attr('width', width)
+      .attr('height', height)
+      .attr('fill', color);
+  })
+    
+})();
+
+// runner = Runner.create();
+// Runner.run(runner, engine);
+
+*/
+
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+function* update() {
+  
+  while (true) {
+    
+    // setTimeout(function() {}, 1000 / 50)
+    Engine.update(engine, 5)
+    
+    bodies.forEach(body => {
+      const pos = body.position;
+      svg
+        .select(`#box-${body.id}`)
+        .attr('x', pos.x)
+        .attr('y', pos.y)
+    })
+    
+    yield svg
+    
+  }
+}
+```
+
+
+```{ojs}
+update();
+```
+
