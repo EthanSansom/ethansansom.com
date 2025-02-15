@@ -17,9 +17,6 @@ editor:
 
 This is a test of punch-able data
 
-<!-- Matter.js include, TODO: Add in correct location later --->
-<!-- <script src="matter.js"></script> --->
-
 :::: {#matter-container}
 ::::
 
@@ -27,55 +24,161 @@ This is a test of punch-able data
 //| echo: false
 //| output: false
 
-// TODO: Read https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
+// TODO: 
+// - Read all of: https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
+// - Look at the Matter.js documentation page (and examples at the bottom) for
+//   style inspiration!
+//    - Implement some kind of fun physics simulation for your about page
 
-/*
-D3 Interaction with <canvas>
-https://d3-graph-gallery.com/graph/canvas.html
-*/
+// Imports ---------------------------------------------------------------------
 
-d3 = require("d3")
+d3 = require("d3");
 Matter = require("matter-js");
 
-// Constants
+Engine = Matter.Engine
+Bodies = Matter.Bodies
+Composite = Matter.Composite
 
+// Constants -------------------------------------------------------------------
+
+// Colors
 offblack = "#1E1E1E";
 offwhite = "#FFFBFC";
 lightblue = "#96BFE3";
 
+// Dimensions of the SVG viewbox, defines our world-space
 width = 600;
 height = 400;
+stroke_width = 2;
 
-// Prepare the D3.js elements
+margin_left = 10;
+margin_right = 10;
+margin_top = 10;
+margin_bottom = 10;
 
-// Define the SVG view-box
+// Sample data
+data = [
+  { label: "A", value: 10 },
+  { label: "B", value: 25 },
+  { label: "C", value: 15 },
+  { label: "D", value: 30 },
+  { label: "E", value: 20 }
+];
+
+// Helpers ---------------------------------------------------------------------
+
+// Transform coordinate you'd provide to initialize a Matter.js rectangle
+// to the points of an SVG <polygon>. Assumes that (x, y) is top left.
+rectangle_points = function(x, y, width, height) {
+  const top_left = `${x},${y}`;
+  const bottom_left = `${x},${y + height}`;
+  const top_right = `${x + width},${y}`;
+  const bottom_right = `${x + width},${y + height}`;
+  return top_left + " " + top_right + " " + bottom_right + " " + bottom_left;
+}
+
+// Transform Matter body vertices into SVG <polygon> points
+vertices_to_points = function(vertices) {
+  return vertices.map(vertex => `${vertex.x},${vertex.y}`).join(" ")
+}
+
+// Transform SVG <polygon> points into Matter body vertices
+points_to_vertices = function(points) {
+  return points.split(" ").map(point => point.split(",")).map(xy => ({ x: xy[[0]], y: xy[[1]] }))
+}
+
+// SVG -------------------------------------------------------------------------
+
 svg = d3.select("#matter-container")
   .append("svg")
-  // Force the plot to width/height aspect ratio which fills the parent width
   .attr("viewBox", [0, 0, width, height])
   .attr("style", "max-width: 100%; height: auto;");
 
-// Prepare the Matter.js elements
+// TODO: Now what we want to do is this:
+//
+// 1. Take in input data as normal and initialize a set of SVGs using D3
+// 2. For each SVG initialized by D3, initialize a corresponding physics object with Matter.js
+// 3. Magic. Create the `update()` loop and on each update:
+// - Update the physics objects with Matter.Engine.update()
+// - Update the SVG positions to their new locations with D3
 
-// module aliases
-Engine = Matter.Engine
-Bodies = Matter.Bodies
-Composite = Matter.Composite
-Runner = Matter.Runner
-// Render = Matter.Render
+// Scales
+x_axis = d3.scaleBand()
+  .domain(data.map(d => d.label))
+  .range([margin_left, width - margin_right]);
 
-// NOTE: Matter.js allows you to specify your own renderer and runner, so
-// we can use SVG instead of <canvas>
-// - https://github.com/liabru/matter-js/wiki/Rendering
-// - https://github.com/liabru/matter-js/wiki/Running
+y_axis = d3.scaleLinear()
+  .domain([0, d3.max(data, d => d.value)])
+  .nice()
+  .range([height - margin_bottom, margin_top]);
+
+svg
+  .selectAll(".bar")
+  .data(data)
+  .join("polygon")
+  .attr('id', (d, i) => `box-${i}`)
+  .attr('points', d =>
+    rectangle_points(
+      x_axis(d.label), // `x` scaled to view-space
+      y_axis(d.value), // `y` scaled to view-space
+      x_axis.bandwidth() * 0.75, // Width, don't make the bars full-width
+      height - margin_bottom - y_axis(d.value) // Height
+    )
+  )
+  .attr("fill", offwhite)
+  .attr("stroke", lightblue)
+  .attr("stroke-width", stroke_width)
+
+// Physics ---------------------------------------------------------------------
+
+// TODO: Transfer the bar data 
 
 // Create an engine
 engine = Engine.create();
 
+// Create bodies corresponding to each rectangle in the scene
+svg
+  .each((d, i) => {
+    // Repeating what I did to make the SVG, maybe more elegant to create the
+    // bodies first and then just extract their coordinate for the SVG
+    const x = x_axis(d.label);
+    const y = y_axis(d.value);
+    const width = x_axis.bandwidth() * 0.75;
+    const height = height - margin_bottom - y_axis(d.value);
+    
+    // Matter expects centered x, y coordiantes
+    body = Bodies.rectangle(x - (width / 2), y - (height / 2), width, height);
+    Composite.add(engine.world, [body]);
+
+  })
+  .data(data)
+  .join("polygon")
+  .attr('id', (d, i) => `box-${i}`)
+  .attr('points', d =>
+    rectangle_points(
+      x_axis(d.label), // `x` scaled to view-space
+      y_axis(d.value), // `y` scaled to view-space
+      x_axis.bandwidth() * 0.75, // Width, don't make the bars full-width
+      height - margin_bottom - y_axis(d.value) // Height
+    )
+  )
+  .attr("fill", offwhite)
+  .attr("stroke", lightblue)
+  .attr("stroke-width", stroke_width)
+
 // Create two boxes and a ground
-boxA = Bodies.rectangle(0, 0, 80, 80);
-boxB = Bodies.rectangle(450, 50, 80, 80);
-ground = Bodies.rectangle(0, 350, 600, 50, { isStatic: true, label: "ground" });
+/*
+boxA = Bodies.rectangle(300, 40, 80, 80);
+boxB = Bodies.rectangle(350, 200, 80, 80);
+ground = Bodies.rectangle(
+  300, 350, 550, 50, 
+  { 
+    isStatic: true, 
+    label: "ground",
+    chamfer: { radius: 10 }
+  }
+);
+*/
 
 // Add all of the bodies to the world
 Composite.add(engine.world, [boxA, boxB, ground]);
@@ -84,154 +187,62 @@ Composite.add(engine.world, [boxA, boxB, ground]);
 // bodies = Composite.allBodies(engine.world);
 bodies = engine.world.bodies;
 
+// Rendering -------------------------------------------------------------------
+
 // Add each physics object as an SVG
-
 bodies.forEach(body => {
-  const pos = body.position;
-  const label = body.label
-  const color = (label === "ground") ? offblack : lightblue;
-  
-  // At initialization the rectangles bounds will correctly describe it's width
-  // and height (but only if no rotation has been applied)
-  const width = body.bounds.max.x - body.bounds.min.x;
-  const height = body.bounds.max.y - body.bounds.min.y;
-  
-  svg.append('rect')
-    .datum(body) // TODO: I don't think `.datum` is really being used here
+  svg.append('polygon')
     .attr('id', `box-${body.id}`)
-    .attr('x', pos.x)
-    .attr('y', pos.y)
-    .attr('width', width)
-    .attr('height', height)
-    .attr('fill', color);
+    .attr('points', vertices_to_points(body.vertices))
+    .attr('fill', offwhite)
+    .attr('stroke', lightblue)
+    // Stroke width will cause physics objects to overlap slightly but it is
+    // really annoying to correct - <svg> does not have a nice inner stroke API
+    .attr('stroke-width', stroke_width)
 })
-
-
-// run the renderer
-// Render.run(render);
-
-// create runner
-// runner = Runner.create();
-
-// run the engine
-// Runner.run(runner, engine);
-
-// Custom update loop via: https://gist.github.com/mwdchang/a275dd5f878ee1c6453133cc80f49400
-
-/*
-(function run() {
-
-  console.log("Running")
-
-  window.requestAnimationFrame(run);
-  Engine.update(engine, 1000);
-  
-  bodies.forEach(body => {
-    const pos = body.position;
-    svg
-      .select(`#box-${body.id}`)
-      .attr('x', pos.x)
-      .attr('y', pos.y);
-  })
-  
-})();
-*/
-
-/*
-run = function() {
-  console.log("running")
-  while (true) {
-    window.requestAnimationFrame(run);
-    Engine.update(engine, 1000);
-    
-    bodies.forEach(body => {
-      const pos = body.position;
-      svg
-        .select(`#box-${body.id}`)
-        .attr('x', pos.x)
-        .attr('y', pos.y);
-    })
-  }
-}
-*/
-
-/*
-
-run = function() {
-  console.log("RUNNING")
-  window.requestAnimationFrame(run);
-}
-
-// run();
-
-// TODO: The real problem is the OJS is not like JS and seems to hate some
-// of these reactive features like running an animation loop. We'll have to
-// try out some more strategies.
-//
-// https://github.com/liabru/matter-js/blob/master/src/render/Render.js
-// https://observablehq.com/@observablehq/observable-javascript
-(function render() {
-  const bodies = engine.world.bodies;
-  window.requestAnimationFrame(render);
-
-    // context.fillStyle = '#fff';
-    // context.fillRect(0, 0, canvas.width, canvas.height);
-
-  bodies.forEach(body => {
-    const pos = body.position;
-    const label = body.label
-    const color = (label === "ground") ? offblack : lightblue;
-    
-    // At initialization the rectangles bounds will correctly describe it's width
-    // and height (but only if no rotation has been applied)
-    const width = body.bounds.max.x - body.bounds.min.x;
-    const height = body.bounds.max.y - body.bounds.min.y;
-    
-    svg.append('rect')
-      .datum(body) // TODO: I don't think `.datum` is really being used here
-      .attr('id', `box-${body.id}`)
-      .attr('x', pos.x)
-      .attr('y', pos.y)
-      .attr('width', width)
-      .attr('height', height)
-      .attr('fill', color);
-  })
-    
-})();
-
-// runner = Runner.create();
-// Runner.run(runner, engine);
-
-*/
 
 ```
 
 ```{ojs}
 //| echo: false
 //| output: false
+
+/*
+
+// TODO: I bet we could expose `bodies` to D3 as a dataset, and make updating
+// more slick. Although, as it is it's very short.
+
+// Implement the engine/render update loop. We're using D3 to update the
+// positions and Matter.js to update the physics engine.
 function* update() {
   
   while (true) {
-    
-    // setTimeout(function() {}, 1000 / 50)
+    // Update the engine
     Engine.update(engine, 5)
     
+    // Move the vertices of every body to their new positions. This is the SVG
+    // equivalent of Matter's example <canvas> render loop: 
+    // https://github.com/liabru/matter-js/wiki/Rendering
     bodies.forEach(body => {
-      const pos = body.position;
-      svg
-        .select(`#box-${body.id}`)
-        .attr('x', pos.x)
-        .attr('y', pos.y)
+      svg.select(`#box-${body.id}`)
+        .attr('points', vertices_to_points(body.vertices))
     })
     
-    yield svg
-    
+    // Finish
+    yield
   }
 }
+
+*/
+1 + 1
 ```
 
 
 ```{ojs}
-update();
+//| echo: false
+//| output: false
+
+// update();
+1 + 1
 ```
 
