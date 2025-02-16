@@ -4,8 +4,6 @@ date: "2025-02-12"
 categories: ["D3", "Data Visualization"]
 # image: "vlightr_hex.png"
 # smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
-description: |
-  Data you can punch.
 summary: |
   Data you can punch.
 editor: 
@@ -15,7 +13,16 @@ editor:
 
 <br>
 
-This is a test of punch-able data
+Have you ever opened a dataset to find out that every second value was missing?
+Were you forced to manually geo-code the last 2,000 addresses when you ran out
+of Google Maps API requests? Was your original thesis scrapped because every
+result turned out insignificant?
+
+This is a plot for anyone who's ever been hurt by bad data. Grab the "fist"
+below and vent your frustration.
+
+:::: {#plot-title}
+::::
 
 :::: {#matter-container}
 ::::
@@ -30,9 +37,22 @@ This is a test of punch-able data
 //   style inspiration!
 //    - Implement some kind of fun physics simulation for your about page
 
-// TODO: Think about the margins. Make some functions which take SVG coordiantes
+// TODO: Think about the margins. Make some functions which take SVG co-ordiantes
 // that D3 expects and the margins and convert them to Matter coordinates so I
 // don't need to think about it!
+
+// TODO: Clean up all of this code and make a `reset` button, so you don't
+// need to refresh the page! Basically, just wrap all of this code in a function.
+// Have D3 fade out any remaining objects and then fade them all back in afterwards.
+// Have the fist drop from the sky on reset!
+// Have the title of the plot increment!
+
+// TODO: Manually set the z-index of text on this page to -1, since the effect
+// is way more fun when the text goes behind the "fist".
+
+// TODO: Don't colour things manually, make some classes in the custom light
+// and custom dark CSS which we can use for data elements in the normal plots.
+// Since I'll mostly just be done the blue + black + white thing.
 
 // Imports ---------------------------------------------------------------------
 
@@ -46,14 +66,12 @@ Composite = Matter.Composite
 // Constants -------------------------------------------------------------------
 
 // Colors
-offblack = "#1E1E1E";
 offwhite = "#FFFBFC";
-lightblue = "#96BFE3";
 
 // Dimensions of the SVG viewbox, defines our world-space
 width = 800;
 height = 400;
-stroke_width = 2;
+stroke_width = 1;
 
 margin_left = 10;
 margin_right = 100; // Leave room for the "fist"
@@ -85,6 +103,18 @@ data = [
   { label: 2008, value: 95 },
   { label: 2009, value: 90 },
 ];
+
+plot_titles = [
+  "Simulated Data",
+  "P-value of 0.55 (never published)",
+  "P-value of 0.00001",
+  "Didn’t survive FDR",
+  "Lasso selected none of my favourites",
+  "Adding another hyper-prior didn’t help",
+  "32 hour bootstrap"
+];
+
+mutable plot_title_index = 0;
 
 // Helpers ---------------------------------------------------------------------
 
@@ -119,6 +149,23 @@ points_to_vertices = function(points) {
 // engine.enabled = self.isActive
 // },
 
+// Move the z-index of all text backwards, because it looks cooler
+d3.select("#title-block-header")
+  .style("position", "relative")
+  .style("z-index", -1);
+
+// Set the plot title
+plot_title = d3.select("#plot-title")
+  .append("h3")
+  .text(plot_titles[plot_title_index])
+  .style("padding-bottom", "0.5em")
+  // Position the title behind the SVG elements and don't let the cursor
+  // highlight it (which happens a lot when dragging the "fist").
+  .style("position", "relative")
+  .style("z-index", -1)
+  .style("user-select", "none");
+
+// Set the SVG viewbox
 svg = d3.select("#matter-container")
   // TODO: I've only gotten Matter.js to work with a fixed width/height 
   // container. Look into whether a reactive size is possible!
@@ -159,32 +206,46 @@ y_axis = d3.scaleLinear()
 x_axis_selection = svg.append("g")
   .classed("x-axis", true)
   // Account for the stroke width of both the bars and the axis itself
-  .attr("transform", `translate(0,${height - margin_bottom + (stroke_width * 2 / 3)})`)
+  .attr("transform", `translate(0,${height - margin_bottom + (stroke_width)})`)
   .call(d3.axisBottom(x_axis).tickSizeOuter(0))
   // Extend the right-side of the axis line to account for the right margin.
   // This gives a spot for the `fist` to land. We have to manually alter the `d`
-  // attribue of the <path>.
+  // attribute of the <path>.
   .call(g => {
     const old_path = g.select(".domain").attr("d");
     const new_path = old_path.replace(/H(\d+)/, (match, p1) => `H${+p1 + margin_right}`);
     g.select(".domain").attr("d", new_path);
   })
-  .call(g => g.select(".domain").attr("stroke-width", stroke_width / 2));
+  .call(g => g.select(".domain").attr("stroke-width", stroke_width))
+  .call(g => g.selectAll("line").attr("stroke-width", stroke_width))
+  .call(g => g.append("text")
+    .attr("x", width - margin_right)
+    // Grab the y-position from the existing tick labels, so this is aligned
+    .attr("y", g.select(".tick text").attr("y"))
+    .attr("dy", g.select(".tick text").attr("dy"))
+    .attr("fill", "currentColor")
+    .attr("text-anchor", "start")
+    .text("Year →")
+  );
 
 x_axis_selection
   .selectAll("line")
   .attr("stroke-width", stroke_width / 2);
-  
+
 y_axis_selection = svg.append("g")
   .classed("y-axis", true)
   // +1 to connect the axis tick at `0` with the x-axis line
-  .attr("transform", `translate(${margin_left + 1}, ${stroke_width * 2 / 3})`)
+  .attr("transform", `translate(${margin_left + 1}, ${stroke_width})`)
   .call(d3.axisLeft(y_axis))
-  .call(g => g.select(".domain").remove());
-
-y_axis_selection
-  .selectAll("line")
-  .attr("stroke-width", stroke_width / 2);
+  .call(g => g.select(".domain").remove())
+  .call(g => g.selectAll("line").attr("stroke-width", stroke_width))
+  .call(g => g.append("text")
+    .attr("x", -margin_left)
+    .attr("y", 10)
+    .attr("fill", "currentColor")
+    .attr("text-anchor", "middle")
+    .text("↑ Value")
+  );
 
 // Set the axis font to the website-wide default and prevent user selection of text
 x_axis_selection
@@ -209,8 +270,7 @@ svg
   // Initialize a <polygon> for each bar. We'll use the vertices
   // provided by Matter to draw these later.
   .join("polygon")
-  .attr("fill", offwhite)
-  .attr("stroke", lightblue)
+  .classed("plot-data-blue", true)
   .attr("stroke-width", stroke_width)
   .attr("data-label", d => d.label)
   // Initialize a Matter physics body for each bar. Note `this` means something
@@ -242,6 +302,7 @@ svg
     d3.select(this)
       .attr("id", `body-${body.id}`)
       .attr("points", vertices_to_points(body.vertices))
+      .raise()
   });
 
 // Create an invisible ground for the bars to sit on. The width shouldn't matter
@@ -267,11 +328,11 @@ svg.append('polygon')
 // fist:
 // https://stackoverflow.com/questions/64772783/how-can-i-change-the-collisionfilter-of-an-object-so-it-can-no-longer-interact-w/73262781#73262781
 
-// Test, let's drop a circle on them
+// Add a circular body for the "fist"
 fist_radius = (margin_right / 2) * 0.8; // Slightly smaller diameter than the space for it
 fist = Bodies.polygon(
   width - (margin_right / 2), // Placed in the middle of the right margin
-  0, // Initially at y-position 0, drops from the sky
+  height - (margin_bottom / 2) - (fist_radius / 2), // Initially sitting on the ground
   fist_radius,
   50, // 50 sided
   {
@@ -290,33 +351,64 @@ svg
   .call(g => g.append('polygon')
     .attr("id", `body-${fist.id}`)
     .attr("points", vertices_to_points(fist.vertices))
-    .attr("fill", offwhite)
-    .attr("stroke", offblack)
+    .classed("plot-data-black", true)
+    // .attr("fill", offwhite)
+    // .attr("stroke", offblack)
     .attr("stroke-width", stroke_width)
     // Change the cursor icon while interacting with the fist to make it more
     // obvious that you can drag it.
     .style("cursor", "grab")
     .on("mousedown", function() {
       d3.select(this).style("cursor", "grabbing");
+      // Remove the user-prompt to pick up the fist once they've grabbed it
+      d3.select("#fist-prompt")
+        .attr("pointer-events", "none")
+        .transition()
+        .duration(1000)
+        .style("opacity", 0)
+        .on("end", function() { d3.select(this).remove(); })
     })
     .on("mouseup", function() {
       d3.select(this).style("cursor", "grab");
     })
   )
-  // TODO: Make sure you're getting your SVG font correct
   .call(g => g.append("text")
+    .classed("plot-annotation", true)
     .attr("id", `body-text-${fist.id}`)
     .attr("x", fist.position.x)
     .attr("y", fist.position.y)
     .attr("text-anchor", "middle") // Centers text horizontally
     .attr("dominant-baseline", "middle") // Centers text vertically
     .attr("font-size", 16)
-    .attr("font-weight", 600)
+    .attr("font-weight", 400)
     .text("fist")
     // Prevents trying to copy/highlight the text, which happens a lot on drag
     .style("user-select", "none")
     .style("pointer-events", "none")
-  );
+  )
+  .raise();
+
+// Add a label above the fist
+svg.append("g")
+  .attr("id", "fist-prompt")
+  .call(g => g.append("text")
+    .classed("plot-annotation", true)
+    .attr("x", fist.position.x)
+    .attr("y", fist.position.y - fist_radius - 80)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 16)
+    .attr("font-weight", 400)
+    .text("Pick Up")
+  )
+  .call(g => g.append("text")
+    .classed("plot-annotation", true)
+    .attr("x", fist.position.x)
+    .attr("y", fist.position.y - fist_radius - 80 + 18)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 16)
+    .attr("font-weight", 400)
+    .text("↓")
+  )
 
 // Add a mouse constraint
 mouse = Matter.Mouse.create(document.querySelector("#matter-container"));
@@ -353,6 +445,12 @@ function* update() {
   while (true) {
     // Update the engine
     Engine.update(engine, 5)
+    
+    // TODO: We could remove bodies (via Matter) and polygons (via D3) once
+    // they've left the screen to get some more performance. Doesn't really
+    // matter for this demo.
+    
+    // TODO: Add a gravity slider!
     
     // Move the vertices of every body to their new positions. This is the SVG
     // equivalent of Matter's example <canvas> render loop: 
