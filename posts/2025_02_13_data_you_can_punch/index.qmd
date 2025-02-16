@@ -30,6 +30,10 @@ This is a test of punch-able data
 //   style inspiration!
 //    - Implement some kind of fun physics simulation for your about page
 
+// TODO: Think about the margins. Make some functions which take SVG coordiantes
+// that D3 expects and the margins and convert them to Matter coordinates so I
+// don't need to think about it!
+
 // Imports ---------------------------------------------------------------------
 
 d3 = require("d3");
@@ -47,22 +51,39 @@ offwhite = "#FFFBFC";
 lightblue = "#96BFE3";
 
 // Dimensions of the SVG viewbox, defines our world-space
-width = 600;
+width = 800;
 height = 400;
 stroke_width = 2;
 
 margin_left = 10;
-margin_right = 10;
+margin_right = 100; // Leave room for the "fist"
 margin_top = 10;
 margin_bottom = 10;
 
+// Collision filters, note that these need to be powers of 2
+collision_fist = 0x0001; 
+collision_bar = 0x0002;
+collision_mouse = 0x0004;
+
+// TODO: Automate the simulation of this data, do it relative to the current
+// year, then do the last 20 years or so
 // Sample data
 data = [
-  { label: "A", value: 10 },
-  { label: "B", value: 25 },
-  { label: "C", value: 15 },
-  { label: "D", value: 30 },
-  { label: "E", value: 20 }
+  { label: 1995, value: 10 },
+  { label: 1996, value: 20 },
+  { label: 1997, value: 10 },
+  { label: 1998, value: 30 },
+  { label: 1999, value: 45 },
+  { label: 2000, value: 47 },
+  { label: 2001, value: 56 },
+  { label: 2002, value: 80 },
+  { label: 2003, value: 95 },
+  { label: 2004, value: 90 },
+  { label: 2005, value: 47 },
+  { label: 2006, value: 56 },
+  { label: 2007, value: 80 },
+  { label: 2008, value: 95 },
+  { label: 2009, value: 90 },
 ];
 
 // Helpers ---------------------------------------------------------------------
@@ -89,10 +110,32 @@ points_to_vertices = function(points) {
 
 // SVG -------------------------------------------------------------------------
 
+// TODO: Add a toggle for the physics simulation! Turn on/off ("Make Punchable")
+// https://gsap.com/community/forums/topic/37757-scrolltrigger-matterjs-animation/
+// Also, see how to do scroll events!
+//
+// onToggle: (self) =>  {
+// console.log("toggled, isActive:", self.isActive)
+// engine.enabled = self.isActive
+// },
+
 svg = d3.select("#matter-container")
+  // TODO: I've only gotten Matter.js to work with a fixed width/height 
+  // container. Look into whether a reactive size is possible!
+  // The mouse has an offset and scale, there's probably a way to allow
+  // for resizing: https://brm.io/matter-js/docs/classes/Mouse.html
+  //
+  // Maybe helpful:
+  // https://stackoverflow.com/questions/64302906/scaling-matter-js-canvas-breaks-mouse-drag
+  // https://github.com/liabru/matter-js/issues/955
+  // https://www.youtube.com/watch?v=kdSDTaYY700
+  .style("width", width + "px")
+  .style("height", height + "px")
   .append("svg")
   .attr("viewBox", [0, 0, width, height])
-  .attr("style", "max-width: 100%; height: auto;");
+  .attr("style", "max-width: 100%; height: auto;")
+  // This makes the physics so much more fun!
+  .attr("overflow", "visible");
 
 // TODO: Now what we want to do is this:
 //
@@ -105,109 +148,200 @@ svg = d3.select("#matter-container")
 // Scales
 x_axis = d3.scaleBand()
   .domain(data.map(d => d.label))
-  .range([margin_left, width - margin_right]);
+  .range([margin_left, width - margin_right])
+  .padding(0.2);
 
 y_axis = d3.scaleLinear()
   .domain([0, d3.max(data, d => d.value)])
-  .nice()
-  .range([height - margin_bottom, margin_top]);
+  .range([height - margin_top, margin_bottom]);
+  
+// Add axes
+x_axis_selection = svg.append("g")
+  .classed("x-axis", true)
+  // Account for the stroke width of both the bars and the axis itself
+  .attr("transform", `translate(0,${height - margin_bottom + (stroke_width * 2 / 3)})`)
+  .call(d3.axisBottom(x_axis).tickSizeOuter(0))
+  // Extend the right-side of the axis line to account for the right margin.
+  // This gives a spot for the `fist` to land. We have to manually alter the `d`
+  // attribue of the <path>.
+  .call(g => {
+    const old_path = g.select(".domain").attr("d");
+    const new_path = old_path.replace(/H(\d+)/, (match, p1) => `H${+p1 + margin_right}`);
+    g.select(".domain").attr("d", new_path);
+  })
+  .call(g => g.select(".domain").attr("stroke-width", stroke_width / 2));
 
-svg
-  .selectAll(".bar")
-  .data(data)
-  .join("polygon")
-  .attr('id', (d, i) => `box-${i}`)
-  .attr('points', d =>
-    rectangle_points(
-      x_axis(d.label), // `x` scaled to view-space
-      y_axis(d.value), // `y` scaled to view-space
-      x_axis.bandwidth() * 0.75, // Width, don't make the bars full-width
-      height - margin_bottom - y_axis(d.value) // Height
-    )
-  )
-  .attr("fill", offwhite)
-  .attr("stroke", lightblue)
-  .attr("stroke-width", stroke_width)
+x_axis_selection
+  .selectAll("line")
+  .attr("stroke-width", stroke_width / 2);
+  
+y_axis_selection = svg.append("g")
+  .classed("y-axis", true)
+  // +1 to connect the axis tick at `0` with the x-axis line
+  .attr("transform", `translate(${margin_left + 1}, ${stroke_width * 2 / 3})`)
+  .call(d3.axisLeft(y_axis))
+  .call(g => g.select(".domain").remove());
+
+y_axis_selection
+  .selectAll("line")
+  .attr("stroke-width", stroke_width / 2);
+
+// Set the axis font to the website-wide default and prevent user selection of text
+x_axis_selection
+  .selectAll("text")
+  .style("font-family", "var(--bs-body-font-family)")
+  .style("user-select", "none");
+
+y_axis_selection
+  .selectAll("text")
+  .style("font-family", "var(--bs-body-font-family)")
+  .style("user-select", "none");
 
 // Physics ---------------------------------------------------------------------
-
-// TODO: Transfer the bar data 
 
 // Create an engine
 engine = Engine.create();
 
-// Create bodies corresponding to each rectangle in the scene
+// Create bodies corresponding to each bar in bar chart
 svg
-  .each((d, i) => {
-    // Repeating what I did to make the SVG, maybe more elegant to create the
-    // bodies first and then just extract their coordinate for the SVG
-    const x = x_axis(d.label);
-    const y = y_axis(d.value);
-    const width = x_axis.bandwidth() * 0.75;
-    const height = height - margin_bottom - y_axis(d.value);
-    
-    // Matter expects centered x, y coordiantes
-    body = Bodies.rectangle(x - (width / 2), y - (height / 2), width, height);
-    Composite.add(engine.world, [body]);
-
-  })
+  .selectAll(".bar")
   .data(data)
+  // Initialize a <polygon> for each bar. We'll use the vertices
+  // provided by Matter to draw these later.
   .join("polygon")
-  .attr('id', (d, i) => `box-${i}`)
-  .attr('points', d =>
-    rectangle_points(
-      x_axis(d.label), // `x` scaled to view-space
-      y_axis(d.value), // `y` scaled to view-space
-      x_axis.bandwidth() * 0.75, // Width, don't make the bars full-width
-      height - margin_bottom - y_axis(d.value) // Height
-    )
-  )
   .attr("fill", offwhite)
   .attr("stroke", lightblue)
   .attr("stroke-width", stroke_width)
+  .attr("data-label", d => d.label)
+  // Initialize a Matter physics body for each bar. Note `this` means something
+  // different if you using a `=>` function here - be aware!
+  .each(function(d, i) {
+    
+    const x = x_axis(d.label); // Data `x` in terms of view-space
+    const bar_width = x_axis.bandwidth(); // Keep bar width < 1
+    const bar_height = height - margin_bottom - y_axis(d.value);
+    
+    // Matter expects centered x, y coordinates whereas SVG and D3 expects
+    // coordinates relative to the top-left.
+    const body = Bodies.rectangle(
+      // Center relative to the full band-width, to put each bar in the middle
+      x + (bar_width / 2),
+      height - margin_bottom - (bar_height / 2),
+      bar_width, 
+      bar_height,
+      {
+        collisionFilter: {
+          category: collision_bar,
+          mask: collision_fist | collision_bar
+        }
+      }
+    );
+    Composite.add(engine.world, body);
+    
+    // Synchronize the D3 and Matter IDs and positions
+    d3.select(this)
+      .attr("id", `body-${body.id}`)
+      .attr("points", vertices_to_points(body.vertices))
+  });
 
-// Create two boxes and a ground
-/*
-boxA = Bodies.rectangle(300, 40, 80, 80);
-boxB = Bodies.rectangle(350, 200, 80, 80);
+// Create an invisible ground for the bars to sit on. The width shouldn't matter
+// that much but I imagine thicker is a little better for collision detection.
+ground_width = 50;
 ground = Bodies.rectangle(
-  300, 350, 550, 50, 
+  width / 2, height - (margin_bottom / 2), width, margin_bottom,
   { 
     isStatic: true, 
-    label: "ground",
-    chamfer: { radius: 10 }
+    label: "ground"
   }
 );
+Composite.add(engine.world, ground);
+
+/* Renders the ground
+svg.append('polygon')
+  .attr("id", `body-${ground.id}`)
+  .attr("points", vertices_to_points(ground.vertices))
+  .attr("fill", offblack)
 */
 
-// Add all of the bodies to the world
-Composite.add(engine.world, [boxA, boxB, ground]);
+// Using a mask to ensure that the mouseContstraint can only interact with the
+// fist:
+// https://stackoverflow.com/questions/64772783/how-can-i-change-the-collisionfilter-of-an-object-so-it-can-no-longer-interact-w/73262781#73262781
 
-// This will record all physic objects in the scene
-// bodies = Composite.allBodies(engine.world);
+// Test, let's drop a circle on them
+fist_radius = (margin_right / 2) * 0.8; // Slightly smaller diameter than the space for it
+fist = Bodies.polygon(
+  width - (margin_right / 2), // Placed in the middle of the right margin
+  0, // Initially at y-position 0, drops from the sky
+  fist_radius,
+  50, // 50 sided
+  {
+    collisionFilter: {
+      category: collision_fist,
+      mask: collision_fist | collision_bar | collision_mouse
+    }
+  }
+);
+Composite.add(engine.world, fist);
+
+// Render the Fist
+svg
+  .append("g")
+  .classed("fist-container", true)
+  .call(g => g.append('polygon')
+    .attr("id", `body-${fist.id}`)
+    .attr("points", vertices_to_points(fist.vertices))
+    .attr("fill", offwhite)
+    .attr("stroke", offblack)
+    .attr("stroke-width", stroke_width)
+    // Change the cursor icon while interacting with the fist to make it more
+    // obvious that you can drag it.
+    .style("cursor", "grab")
+    .on("mousedown", function() {
+      d3.select(this).style("cursor", "grabbing");
+    })
+    .on("mouseup", function() {
+      d3.select(this).style("cursor", "grab");
+    })
+  )
+  // TODO: Make sure you're getting your SVG font correct
+  .call(g => g.append("text")
+    .attr("id", `body-text-${fist.id}`)
+    .attr("x", fist.position.x)
+    .attr("y", fist.position.y)
+    .attr("text-anchor", "middle") // Centers text horizontally
+    .attr("dominant-baseline", "middle") // Centers text vertically
+    .attr("font-size", 16)
+    .attr("font-weight", 600)
+    .text("fist")
+    // Prevents trying to copy/highlight the text, which happens a lot on drag
+    .style("user-select", "none")
+    .style("pointer-events", "none")
+  );
+
+// Add a mouse constraint
+mouse = Matter.Mouse.create(document.querySelector("#matter-container"));
+// mouse.pixelRatio = window.devicePixelRatio; // TODO: Figure this out
+mouse_constraint = Matter.MouseConstraint.create(engine, {
+  mouse: mouse,
+  collisionFilter: {
+    category: collision_mouse,
+    mask: collision_fist
+  },
+  constraint: { stiffness: 0.5 }
+})
+Composite.add(engine.world, mouse_constraint);
+
+// This is a global variable which records all physic objects in the scene
 bodies = engine.world.bodies;
 
-// Rendering -------------------------------------------------------------------
-
-// Add each physics object as an SVG
-bodies.forEach(body => {
-  svg.append('polygon')
-    .attr('id', `box-${body.id}`)
-    .attr('points', vertices_to_points(body.vertices))
-    .attr('fill', offwhite)
-    .attr('stroke', lightblue)
-    // Stroke width will cause physics objects to overlap slightly but it is
-    // really annoying to correct - <svg> does not have a nice inner stroke API
-    .attr('stroke-width', stroke_width)
-})
-
+// Make sure the axes appear behind other objects
+x_axis_selection.lower();
+y_axis_selection.lower();
 ```
 
 ```{ojs}
 //| echo: false
 //| output: false
-
-/*
 
 // TODO: I bet we could expose `bodies` to D3 as a dataset, and make updating
 // more slick. Although, as it is it's very short.
@@ -223,26 +357,30 @@ function* update() {
     // Move the vertices of every body to their new positions. This is the SVG
     // equivalent of Matter's example <canvas> render loop: 
     // https://github.com/liabru/matter-js/wiki/Rendering
-    bodies.forEach(body => {
-      svg.select(`#box-${body.id}`)
-        .attr('points', vertices_to_points(body.vertices))
+    bodies.filter(body => body.label != "ground").forEach(body => {
+      svg.select(`#body-${body.id}`)
+        .attr('points', vertices_to_points(body.vertices));
+      
+      // Matter.js angle is in radians, convert to degress
+      const body_angle = body.angle * (180 / Math.PI);
+      const body_x = body.position.x;
+      const body_y = body.position.y;
+      svg.select(`#body-text-${body.id}`)
+        .attr("x", body_x)
+        .attr("y", body_y)
+        .attr("transform", `rotate(${body_angle}, ${body_x}, ${body_y})`);
     })
     
     // Finish
     yield
   }
 }
-
-*/
-1 + 1
 ```
 
 
 ```{ojs}
 //| echo: false
 //| output: false
-
-// update();
-1 + 1
+update();
 ```
 
