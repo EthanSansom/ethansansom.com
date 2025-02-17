@@ -68,7 +68,7 @@ Composite = Matter.Composite
 // Colors
 offwhite = "#FFFBFC";
 
-// Dimensions of the SVG viewbox, defines our world-space
+// Dimensions of the SVG viewbox and margins, defines our world-space
 width = 800;
 height = 400;
 stroke_width = 1;
@@ -78,32 +78,30 @@ margin_right = 100; // Leave room for the "fist"
 margin_top = 10;
 margin_bottom = 10;
 
-// Collision filters, note that these need to be powers of 2
+// Collision filters for Matter.js, note that these need to be powers of 2
 collision_fist = 0x0001; 
 collision_bar = 0x0002;
 collision_mouse = 0x0004;
 
-// TODO: Automate the simulation of this data, do it relative to the current
-// year, then do the last 20 years or so
-// Sample data
-data = [
-  { label: 1995, value: 10 },
-  { label: 1996, value: 20 },
-  { label: 1997, value: 10 },
-  { label: 1998, value: 30 },
-  { label: 1999, value: 45 },
-  { label: 2000, value: 47 },
-  { label: 2001, value: 56 },
-  { label: 2002, value: 80 },
-  { label: 2003, value: 95 },
-  { label: 2004, value: 90 },
-  { label: 2005, value: 47 },
-  { label: 2006, value: 56 },
-  { label: 2007, value: 80 },
-  { label: 2008, value: 95 },
-  { label: 2009, value: 90 },
-];
+// See here for information on using Matter.js collision filters. In this plot,
+// we use them to only allow mouse interaction with the "fist" and not the bars
+// of the bar plot.
+//
+// https://stackoverflow.com/questions/64772783/how-can-i-change-the-collisionfilter-of-an-object-so-it-can-no-longer-interact-w/73262781#73262781
 
+// Generate 20 years of random data, ending last year
+offsets = d3.shuffle(d3.range(-10, 10)).slice(0, 20);
+this_year = new Date().getFullYear();
+data = d3
+  .range(this_year - 20, this_year)
+  .map((year, i) => ({
+    label: year,
+    // Fix the maximum value so that the y-axis always looks consistent
+    value: (i == 20) ? 190 : Math.max((i * 10) + offsets[i], 10)
+  }))
+
+// Rotating plot titles (cycle on plot re-set)
+mutable plot_title_index = 0;
 plot_titles = [
   "Simulated Data",
   "P-value of 0.55 (never published)",
@@ -114,42 +112,17 @@ plot_titles = [
   "32 hour bootstrap"
 ];
 
-mutable plot_title_index = 0;
-
 // Helpers ---------------------------------------------------------------------
-
-// Transform coordinate you'd provide to initialize a Matter.js rectangle
-// to the points of an SVG <polygon>. Assumes that (x, y) is top left.
-rectangle_points = function(x, y, width, height) {
-  const top_left = `${x},${y}`;
-  const bottom_left = `${x},${y + height}`;
-  const top_right = `${x + width},${y}`;
-  const bottom_right = `${x + width},${y + height}`;
-  return top_left + " " + top_right + " " + bottom_right + " " + bottom_left;
-}
 
 // Transform Matter body vertices into SVG <polygon> points
 vertices_to_points = function(vertices) {
   return vertices.map(vertex => `${vertex.x},${vertex.y}`).join(" ")
 }
 
-// Transform SVG <polygon> points into Matter body vertices
-points_to_vertices = function(points) {
-  return points.split(" ").map(point => point.split(",")).map(xy => ({ x: xy[[0]], y: xy[[1]] }))
-}
-
 // SVG -------------------------------------------------------------------------
 
-// TODO: Add a toggle for the physics simulation! Turn on/off ("Make Punchable")
-// https://gsap.com/community/forums/topic/37757-scrolltrigger-matterjs-animation/
-// Also, see how to do scroll events!
-//
-// onToggle: (self) =>  {
-// console.log("toggled, isActive:", self.isActive)
-// engine.enabled = self.isActive
-// },
-
-// Move the z-index of all text backwards, because it looks cooler
+// Move the z-index of all text backwards, it looks nicer when the physics
+// objects appear above the rest of the article text.
 d3.select("#title-block-header")
   .style("position", "relative")
   .style("z-index", -1);
@@ -159,10 +132,10 @@ plot_title = d3.select("#plot-title")
   .append("h3")
   .text(plot_titles[plot_title_index])
   .style("padding-bottom", "0.5em")
-  // Position the title behind the SVG elements and don't let the cursor
-  // highlight it (which happens a lot when dragging the "fist").
   .style("position", "relative")
   .style("z-index", -1)
+  // Prevent the cursor from highlighting text, this happens a lot while
+  // dragging the "fist" around, causing small glitches.
   .style("user-select", "none");
 
 // Set the SVG viewbox
@@ -181,16 +154,8 @@ svg = d3.select("#matter-container")
   .append("svg")
   .attr("viewBox", [0, 0, width, height])
   .attr("style", "max-width: 100%; height: auto;")
-  // This makes the physics so much more fun!
+  // Allows the physics objects to fall outside of the viewbox
   .attr("overflow", "visible");
-
-// TODO: Now what we want to do is this:
-//
-// 1. Take in input data as normal and initialize a set of SVGs using D3
-// 2. For each SVG initialized by D3, initialize a corresponding physics object with Matter.js
-// 3. Magic. Create the `update()` loop and on each update:
-// - Update the physics objects with Matter.Engine.update()
-// - Update the SVG positions to their new locations with D3
 
 // Scales
 x_axis = d3.scaleBand()
@@ -202,8 +167,8 @@ y_axis = d3.scaleLinear()
   .domain([0, d3.max(data, d => d.value)])
   .range([height - margin_top, margin_bottom]);
   
-// Add axes
-x_axis_selection = svg.append("g")
+// Add the x and y axes
+svg.append("g")
   .classed("x-axis", true)
   // Account for the stroke width of both the bars and the axis itself
   .attr("transform", `translate(0,${height - margin_bottom + (stroke_width)})`)
@@ -226,15 +191,17 @@ x_axis_selection = svg.append("g")
     .attr("fill", "currentColor")
     .attr("text-anchor", "start")
     .text("Year →")
-  );
+  )
+  // Set the axis font to the website default and prevent user selection of text
+  .call(g => g.selectAll("text")
+    .style("font-family", "var(--bs-body-font-family)")
+    .style("user-select", "none")
+  )
+  .lower();
 
-x_axis_selection
-  .selectAll("line")
-  .attr("stroke-width", stroke_width / 2);
-
-y_axis_selection = svg.append("g")
+svg.append("g")
   .classed("y-axis", true)
-  // +1 to connect the axis tick at `0` with the x-axis line
+  // `+ 1` to connect the axis tick at `0` with the x-axis line
   .attr("transform", `translate(${margin_left + 1}, ${stroke_width})`)
   .call(d3.axisLeft(y_axis))
   .call(g => g.select(".domain").remove())
@@ -245,18 +212,13 @@ y_axis_selection = svg.append("g")
     .attr("fill", "currentColor")
     .attr("text-anchor", "middle")
     .text("↑ Value")
-  );
-
-// Set the axis font to the website-wide default and prevent user selection of text
-x_axis_selection
-  .selectAll("text")
-  .style("font-family", "var(--bs-body-font-family)")
-  .style("user-select", "none");
-
-y_axis_selection
-  .selectAll("text")
-  .style("font-family", "var(--bs-body-font-family)")
-  .style("user-select", "none");
+  )
+  // Set the axis font to the website default and prevent user selection of text
+  .call(g => g.selectAll("text")
+    .style("font-family", "var(--bs-body-font-family)")
+    .style("user-select", "none")
+  )
+  .lower();
 
 // Physics ---------------------------------------------------------------------
 
@@ -277,8 +239,8 @@ svg
   // different if you using a `=>` function here - be aware!
   .each(function(d, i) {
     
-    const x = x_axis(d.label); // Data `x` in terms of view-space
-    const bar_width = x_axis.bandwidth(); // Keep bar width < 1
+    const x = x_axis(d.label);
+    const bar_width = x_axis.bandwidth();
     const bar_height = height - margin_bottom - y_axis(d.value);
     
     // Matter expects centered x, y coordinates whereas SVG and D3 expects
@@ -292,6 +254,7 @@ svg
       {
         collisionFilter: {
           category: collision_bar,
+          // Collide with other bars or the "fist", note that this is a bit-mask
           mask: collision_fist | collision_bar
         }
       }
@@ -307,6 +270,8 @@ svg
 
 // Create an invisible ground for the bars to sit on. The width shouldn't matter
 // that much but I imagine thicker is a little better for collision detection.
+// The y-position is important to get right so that the bars sit right ontop of
+// the lower margin (`margin_bottom`).
 ground_width = 50;
 ground = Bodies.rectangle(
   width / 2, height - (margin_bottom / 2), width, margin_bottom,
@@ -317,19 +282,8 @@ ground = Bodies.rectangle(
 );
 Composite.add(engine.world, ground);
 
-/* Renders the ground
-svg.append('polygon')
-  .attr("id", `body-${ground.id}`)
-  .attr("points", vertices_to_points(ground.vertices))
-  .attr("fill", offblack)
-*/
-
-// Using a mask to ensure that the mouseContstraint can only interact with the
-// fist:
-// https://stackoverflow.com/questions/64772783/how-can-i-change-the-collisionfilter-of-an-object-so-it-can-no-longer-interact-w/73262781#73262781
-
 // Add a circular body for the "fist"
-fist_radius = (margin_right / 2) * 0.8; // Slightly smaller diameter than the space for it
+fist_radius = (margin_right / 2) * 0.8; // Slightly smaller diameter than the margin
 fist = Bodies.polygon(
   width - (margin_right / 2), // Placed in the middle of the right margin
   height - (margin_bottom / 2) - (fist_radius / 2), // Initially sitting on the ground
@@ -352,8 +306,6 @@ svg
     .attr("id", `body-${fist.id}`)
     .attr("points", vertices_to_points(fist.vertices))
     .classed("plot-data-black", true)
-    // .attr("fill", offwhite)
-    // .attr("stroke", offblack)
     .attr("stroke-width", stroke_width)
     // Change the cursor icon while interacting with the fist to make it more
     // obvious that you can drag it.
@@ -388,7 +340,7 @@ svg
   )
   .raise();
 
-// Add a label above the fist
+// Add a label above the fist prompting the user to click on it
 svg.append("g")
   .attr("id", "fist-prompt")
   .call(g => g.append("text")
@@ -410,7 +362,8 @@ svg.append("g")
     .text("↓")
   )
 
-// Add a mouse constraint
+// Add a mouse constraint, which allows the "fist" to be manipulated (dragged)
+// using the mouse.
 mouse = Matter.Mouse.create(document.querySelector("#matter-container"));
 // mouse.pixelRatio = window.devicePixelRatio; // TODO: Figure this out
 mouse_constraint = Matter.MouseConstraint.create(engine, {
@@ -419,27 +372,25 @@ mouse_constraint = Matter.MouseConstraint.create(engine, {
     category: collision_mouse,
     mask: collision_fist
   },
-  constraint: { stiffness: 0.5 }
+  constraint: { stiffness: 0.5 } // Raising stiffness makes drag less "springy"
 })
 Composite.add(engine.world, mouse_constraint);
 
-// This is a global variable which records all physic objects in the scene
+// Global variable which records all physics objects in the scene
 bodies = engine.world.bodies;
-
-// Make sure the axes appear behind other objects
-x_axis_selection.lower();
-y_axis_selection.lower();
 ```
 
 ```{ojs}
 //| echo: false
 //| output: false
 
-// TODO: I bet we could expose `bodies` to D3 as a dataset, and make updating
-// more slick. Although, as it is it's very short.
+// As always, Danielle Navarro is the best. OJS cells implicitly iterates over
+// generator functions (`function*`) repeatedly, which allows them to be used
+// as update/game loops. See this blog post for details:
+// https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
 
-// Implement the engine/render update loop. We're using D3 to update the
-// positions and Matter.js to update the physics engine.
+// Engine/render update loop. We're using Matter.js to increment each physics
+// step and D3.js to re-render the physics bodies in their new positions.
 function* update() {
   
   while (true) {
@@ -450,16 +401,19 @@ function* update() {
     // they've left the screen to get some more performance. Doesn't really
     // matter for this demo.
     
-    // TODO: Add a gravity slider!
+    // TODO: Might be fun to add a gravity slider in the future, but I'm
+    // trying to avoid packing every feature into this plot.
     
-    // Move the vertices of every body to their new positions. This is the SVG
-    // equivalent of Matter's example <canvas> render loop: 
+    // Move the vertices of every body to their new positions. This is the 
+    // SVG equivalent of Matter's example <canvas> render loop:
     // https://github.com/liabru/matter-js/wiki/Rendering
     bodies.filter(body => body.label != "ground").forEach(body => {
       svg.select(`#body-${body.id}`)
         .attr('points', vertices_to_points(body.vertices));
       
-      // Matter.js angle is in radians, convert to degress
+      // Rotate any text labels attached to a physics body to match the body's
+      // rotation. Note that the Matter.js body angles are in radians, but
+      // `rotate()` expects degrees.
       const body_angle = body.angle * (180 / Math.PI);
       const body_x = body.position.x;
       const body_y = body.position.y;
@@ -473,12 +427,7 @@ function* update() {
     yield
   }
 }
-```
 
-
-```{ojs}
-//| echo: false
-//| output: false
+// Call the `update()` function once to begin the loop
 update();
 ```
-
