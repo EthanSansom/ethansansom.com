@@ -21,7 +21,13 @@ result turned out insignificant?
 This is a plot for anyone who's ever been hurt by bad data. Grab the "fist"
 below and vent your frustration.
 
+:::: {style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1em;"}
+
 :::: {#plot-title}
+::::
+
+<span class = "blue-hover" id = "reset-button"><a class = "mono-link">Reset Simulation</a> ↺</span>
+
 ::::
 
 :::: {#matter-container}
@@ -83,6 +89,10 @@ collision_fist = 0x0001;
 collision_bar = 0x0002;
 collision_mouse = 0x0004;
 
+// Duration of D3 transitions (milliseconds)
+duration_bar_fade_in = 1000;
+duration_bar_fade_out = 1000;
+
 // See here for information on using Matter.js collision filters. In this plot,
 // we use them to only allow mouse interaction with the "fist" and not the bars
 // of the bar plot.
@@ -97,13 +107,12 @@ data = d3
   .map((year, i) => ({
     label: year,
     // Fix the maximum value so that the y-axis always looks consistent
-    value: (i == 20) ? 190 : Math.max((i * 10) + offsets[i], 10)
+    value: (i == 19) ? 190 : Math.max((i * 10) + offsets[i], 10)
   }))
 
 // Rotating plot titles (cycle on plot re-set)
-mutable plot_title_index = 0;
+plot_title_index = [0];
 plot_titles = [
-  "Simulated Data",
   "P-value of 0.55 (never published)",
   "P-value of 0.00001",
   "Didn’t survive FDR",
@@ -130,7 +139,8 @@ d3.select("#title-block-header")
 // Set the plot title
 plot_title = d3.select("#plot-title")
   .append("h3")
-  .text(plot_titles[plot_title_index])
+  .text("Simulated Data")
+  .style("opacity", 1)
   .style("padding-bottom", "0.5em")
   .style("position", "relative")
   .style("z-index", -1)
@@ -156,6 +166,14 @@ svg = d3.select("#matter-container")
   .attr("style", "max-width: 100%; height: auto;")
   // Allows the physics objects to fall outside of the viewbox
   .attr("overflow", "visible");
+
+// Initialize a container for the plot bars and "fist". Note that we initialize
+// the fist container and prompt with an explicitly opacity of 1, otherwise, 
+// when we later use `.transition()` to fade these elements out, their opacity
+// attribute is instantly added, causing the element to "blink".
+bar_container = svg.append("g").classed("bar-container", true)
+fist_container = svg.append("g").classed("fist-container", true).attr("opacity", 1)
+fist_prompt_container = svg.append("g").attr("id", "fist-prompt").attr("opacity", 1)
 
 // Scales
 x_axis = d3.scaleBand()
@@ -208,7 +226,7 @@ svg.append("g")
   .call(g => g.selectAll("line").attr("stroke-width", stroke_width))
   .call(g => g.append("text")
     .attr("x", -margin_left)
-    .attr("y", 10)
+    .attr("y", d3.min(y_axis.range()) - 10)
     .attr("fill", "currentColor")
     .attr("text-anchor", "middle")
     .text("↑ Value")
@@ -222,57 +240,22 @@ svg.append("g")
 
 // Physics ---------------------------------------------------------------------
 
+// TODO: Tune physics parameters
+
 // Create an engine
 engine = Engine.create();
+engine.gravity.scale = 0.001;
+engine.gravity.y = 1;
+engine.gravity.x = 0;
 
-// Create bodies corresponding to each bar in bar chart
-svg
-  .selectAll(".bar")
-  .data(data)
-  // Initialize a <polygon> for each bar. We'll use the vertices
-  // provided by Matter to draw these later.
-  .join("polygon")
-  .classed("plot-data-blue", true)
-  .attr("stroke-width", stroke_width)
-  .attr("data-label", d => d.label)
-  // Initialize a Matter physics body for each bar. Note `this` means something
-  // different if you using a `=>` function here - be aware!
-  .each(function(d, i) {
-    
-    const x = x_axis(d.label);
-    const bar_width = x_axis.bandwidth();
-    const bar_height = height - margin_bottom - y_axis(d.value);
-    
-    // Matter expects centered x, y coordinates whereas SVG and D3 expects
-    // coordinates relative to the top-left.
-    const body = Bodies.rectangle(
-      // Center relative to the full band-width, to put each bar in the middle
-      x + (bar_width / 2),
-      height - margin_bottom - (bar_height / 2),
-      bar_width, 
-      bar_height,
-      {
-        collisionFilter: {
-          category: collision_bar,
-          // Collide with other bars or the "fist", note that this is a bit-mask
-          mask: collision_fist | collision_bar
-        }
-      }
-    );
-    Composite.add(engine.world, body);
-    
-    // Synchronize the D3 and Matter IDs and positions
-    d3.select(this)
-      .attr("id", `body-${body.id}`)
-      .attr("points", vertices_to_points(body.vertices))
-      .raise()
-  });
+// Global variable which records all physics objects in the scene
+bodies = engine.world.bodies;
 
 // Create an invisible ground for the bars to sit on. The width shouldn't matter
 // that much but I imagine thicker is a little better for collision detection.
 // The y-position is important to get right so that the bars sit right ontop of
 // the lower margin (`margin_bottom`).
-ground_width = 50;
+ground_width = 10;
 ground = Bodies.rectangle(
   width / 2, height - (margin_bottom / 2), width, margin_bottom,
   { 
@@ -281,87 +264,7 @@ ground = Bodies.rectangle(
   }
 );
 Composite.add(engine.world, ground);
-
-// Add a circular body for the "fist"
-fist_radius = (margin_right / 2) * 0.8; // Slightly smaller diameter than the margin
-fist = Bodies.polygon(
-  width - (margin_right / 2), // Placed in the middle of the right margin
-  height - (margin_bottom / 2) - (fist_radius / 2), // Initially sitting on the ground
-  fist_radius,
-  50, // 50 sided
-  {
-    collisionFilter: {
-      category: collision_fist,
-      mask: collision_fist | collision_bar | collision_mouse
-    }
-  }
-);
-Composite.add(engine.world, fist);
-
-// Render the Fist
-svg
-  .append("g")
-  .classed("fist-container", true)
-  .call(g => g.append('polygon')
-    .attr("id", `body-${fist.id}`)
-    .attr("points", vertices_to_points(fist.vertices))
-    .classed("plot-data-black", true)
-    .attr("stroke-width", stroke_width)
-    // Change the cursor icon while interacting with the fist to make it more
-    // obvious that you can drag it.
-    .style("cursor", "grab")
-    .on("mousedown", function() {
-      d3.select(this).style("cursor", "grabbing");
-      // Remove the user-prompt to pick up the fist once they've grabbed it
-      d3.select("#fist-prompt")
-        .attr("pointer-events", "none")
-        .transition()
-        .duration(1000)
-        .style("opacity", 0)
-        .on("end", function() { d3.select(this).remove(); })
-    })
-    .on("mouseup", function() {
-      d3.select(this).style("cursor", "grab");
-    })
-  )
-  .call(g => g.append("text")
-    .classed("plot-annotation", true)
-    .attr("id", `body-text-${fist.id}`)
-    .attr("x", fist.position.x)
-    .attr("y", fist.position.y)
-    .attr("text-anchor", "middle") // Centers text horizontally
-    .attr("dominant-baseline", "middle") // Centers text vertically
-    .attr("font-size", 16)
-    .attr("font-weight", 400)
-    .text("fist")
-    // Prevents trying to copy/highlight the text, which happens a lot on drag
-    .style("user-select", "none")
-    .style("pointer-events", "none")
-  )
-  .raise();
-
-// Add a label above the fist prompting the user to click on it
-svg.append("g")
-  .attr("id", "fist-prompt")
-  .call(g => g.append("text")
-    .classed("plot-annotation", true)
-    .attr("x", fist.position.x)
-    .attr("y", fist.position.y - fist_radius - 80)
-    .attr("text-anchor", "middle")
-    .attr("font-size", 16)
-    .attr("font-weight", 400)
-    .text("Pick Up")
-  )
-  .call(g => g.append("text")
-    .classed("plot-annotation", true)
-    .attr("x", fist.position.x)
-    .attr("y", fist.position.y - fist_radius - 80 + 18)
-    .attr("text-anchor", "middle")
-    .attr("font-size", 16)
-    .attr("font-weight", 400)
-    .text("↓")
-  )
-
+  
 // Add a mouse constraint, which allows the "fist" to be manipulated (dragged)
 // using the mouse.
 mouse = Matter.Mouse.create(document.querySelector("#matter-container"));
@@ -376,8 +279,270 @@ mouse_constraint = Matter.MouseConstraint.create(engine, {
 })
 Composite.add(engine.world, mouse_constraint);
 
-// Global variable which records all physics objects in the scene
-bodies = engine.world.bodies;
+// TODO: Tune the options and fix whatever about this makes Quarto mad
+/*
+body_options = {
+  restitution: 0.6,  // Bounciness (0 = no bounce, 1 = perfect bounce)
+  friction: 0.3,     // Surface friction (higher = slower slides)
+  frictionAir: 0.01, // Air resistance (prevents excessive sliding)
+  density: 0.001     // Mass per unit area (affects inertia)
+};
+*/
+
+// Create the bar chart physics bodies and render them to the screen
+create_bars = function(first = false) {
+  
+  // console.log(bodies[1].mass)
+  // console.log(bodies[1])
+  
+  // Create bodies corresponding to each bar in bar chart
+  bar_container
+    .selectAll("bar")
+    .data(data)
+    // Initialize a <polygon> for each bar. We'll use the vertices
+    // provided by Matter to draw these later.
+    .join("polygon")
+    .classed("plot-data-blue", true)
+    .attr("stroke-width", stroke_width)
+    .attr("data-label", d => d.label)
+    // Set the opacity to 0, so we can fade the bars in
+    .attr("opacity", first ? 1 : 0)
+    // Initialize a Matter physics body for each bar. Note `this` means something
+    // different if you using a `=>` function here - be aware!
+    .each(function(d, i) {
+      
+      const x = x_axis(d.label);
+      const bar_width = x_axis.bandwidth();
+      const bar_height = height - margin_bottom - y_axis(d.value);
+      
+      // Matter expects centered x, y coordinates whereas SVG and D3 expects
+      // coordinates relative to the top-left.
+      const body = Bodies.rectangle(
+        // Center relative to the full band-width, to put each bar in the middle
+        x + (bar_width / 2),
+        height - margin_bottom - (bar_height / 2),
+        bar_width, 
+        bar_height,
+        {
+          collisionFilter: {
+            category: collision_bar,
+            // Collide with other bars or the "fist", note that this is a bit-mask
+            mask: collision_fist | collision_bar
+          },
+          label: "bar"
+        }
+      );
+      Composite.add(engine.world, body);
+      
+      // Synchronize the D3 and Matter IDs and positions
+      d3.select(this)
+        .attr("id", `body-${body.id}`)
+        .attr("data-body-id", body.id)
+        .attr("points", vertices_to_points(body.vertices))
+        .raise()
+    });
+    
+    // Fade in all of the bars on re-set
+    if (!first) {
+      svg
+        .select(".bar-container")
+        .selectAll("polygon")
+        .transition()
+        .duration(duration_bar_fade_in)
+        .attr("opacity", 1)
+    }
+}
+
+// Remove the bar chart physics bodies and fade them to the screen
+remove_bars = function() {
+  bar_container
+    .selectAll("polygon")
+    .transition()
+    .duration(duration_bar_fade_out)
+    .attr("opacity", 0)
+    // Remove the bar and it's physics body
+    .on("end", function() { 
+      const body_id = d3.select(this).attr("data-body-id");
+      Composite.remove(engine.world, Composite.get(engine.world, body_id, "body"));
+      d3.select(this).remove(); 
+    })
+}
+
+// Create the "fist" physics body and render it to the screen
+create_fist = function(first = false) {
+  
+  // Slightly smaller diameter than the margin
+  const fist_radius = (margin_right / 2) * 0.8;
+  
+  // If `first` the ball is sitting on the ground, otherwise we drop it from
+  // the sky.
+  const fist_y = first ? height - (margin_bottom / 2) - (fist_radius / 2) : 0;
+  
+  // Create a circular body for the "fist"
+  const fist = Bodies.polygon(
+    width - (margin_right / 2), // Placed in the middle of the right margin
+    fist_y,
+    fist_radius,
+    50, // 50 sided
+    {
+      collisionFilter: {
+        category: collision_fist,
+        mask: collision_fist | collision_bar | collision_mouse
+      }
+    }
+  );
+  
+  Composite.add(engine.world, fist);
+  
+  // Render the Fist
+  fist_container
+    .attr("opacity", first ? 1 : 0)
+    .call(g => g.append('polygon')
+      .attr("id", `body-${fist.id}`)
+      .attr("data-body-id", fist.id)
+      .attr("points", vertices_to_points(fist.vertices))
+      .classed("plot-data-black", true)
+      .attr("stroke-width", stroke_width)
+      // Change the cursor icon while interacting with the fist to make it more
+      // obvious that you can drag it.
+      .style("cursor", "grab")
+      .on("mousedown", function() {
+        d3.select(this).style("cursor", "grabbing");
+        // Remove the user-prompt to pick up the fist once they've grabbed it
+        d3.select("#fist-prompt")
+          .attr("pointer-events", "none")
+          .transition()
+          .duration(1000)
+          .style("opacity", 0)
+          .on("end", function() { d3.select(this).remove(); })
+      })
+      .on("mouseup", function() {
+        d3.select(this).style("cursor", "grab");
+      })
+    )
+    .call(g => g.append("text")
+      .classed("plot-annotation", true)
+      .attr("id", `body-text-${fist.id}`)
+      .attr("x", fist.position.x)
+      .attr("y", fist.position.y)
+      .attr("text-anchor", "middle") // Centers text horizontally
+      .attr("dominant-baseline", "middle") // Centers text vertically
+      .attr("font-size", 16)
+      .attr("font-weight", 400)
+      .text("fist")
+      // Prevents trying to copy/highlight the text, which happens a lot on drag
+      .style("user-select", "none")
+      .style("pointer-events", "none")
+    )
+    .raise();
+    
+  if (!first) {
+    fist_container
+      .transition()
+      .duration(duration_bar_fade_in)
+      .attr("opacity", 1)
+  }
+    
+  if (first) {
+    // Add a label above the fist prompting the user to click on it. We create the
+    // "fist" later using `create_fist()`.
+    fist_prompt_container
+      .call(g => g.append("text")
+        .classed("plot-annotation", true)
+        .attr("x", fist.position.x)
+        .attr("y", fist.position.y - fist_radius - 80)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 16)
+        .attr("font-weight", 400)
+        .text("Pick Up")
+      )
+      .call(g => g.append("text")
+        .classed("plot-annotation", true)
+        .attr("x", fist.position.x)
+        .attr("y", fist.position.y - fist_radius - 80 + 18)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 16)
+        .attr("font-weight", 400)
+        .text("↓")
+      )
+  }
+}
+
+// Remove the "fist" physics body and it from the screen
+remove_fist = function() {
+  fist_container
+    .transition()
+    .duration(duration_bar_fade_out)
+    .attr("opacity", 0)
+    // Remove any child elements of the container (i.e. "fist" and it's label)
+    // and the corresponding physics body.
+    .on("end", function() { 
+      const fist_id = d3.select(this).select("polygon").attr("data-body-id");
+      Composite.remove(engine.world, Composite.get(engine.world, fist_id, "body"));
+      d3.select(this).selectAll("*").remove(); 
+    });
+    
+  // Remove the "fist" interaction prompt if it still exists
+  fist_prompt_container
+    .transition()
+    .duration(duration_bar_fade_out)
+    .attr("opacity", 0)
+    .on("end", function() { d3.select(this).remove(); });
+}
+
+// When the category selector is changed, filter the posts and record the
+// selection in `previous_selection`.
+// mutable click_off = false;
+d3.select("#reset-button")
+  .style("user-select", "none")
+  .on("click", function() {
+    // TODO: Think of a much more robust way to prevent spamming of this
+    // button. I think on each regeneration we should destroy pause the physics
+    // and then destroy every physics body immediately. Then we un-pause at the
+    // end of this callback.
+    
+    // TODO: Nice transition for incrementing the plot title
+  
+    // Prevent interaction with this button
+    const button = d3.select(this).style("pointer-events", "none");
+    
+    // Increment the plot title, fading out and then back in
+    plot_title
+      .transition()
+      .duration(duration_bar_fade_out)
+      .style("opacity", 0)
+      .on("end", function() {
+        plot_title.text(plot_titles[plot_title_index[0]]);
+        plot_title_index[0] = (plot_title_index[0] + 1) % plot_titles.length;
+        plot_title.transition().duration(duration_bar_fade_in).style("opacity", 1);
+      });
+    
+    // Remove physics bodies
+    // clear_bodies();
+    remove_bars();
+    remove_fist();
+    
+    // Wait until the end of the `remove_*()` transition to re-generate the
+    // bars and fist.
+    svg
+      .transition()
+      .delay(duration_bar_fade_out + 100)
+      .on("end", function() {
+        create_bars();
+        create_fist();
+      });
+    
+    // Re-activate pointer events using this button
+    svg
+      .transition()
+      .delay(duration_bar_fade_in + duration_bar_fade_out + 500)
+      .on("end", function() { button.style("pointer-events", "auto"); });
+  });
+
+// Initialize the first bars
+create_bars(true);
+create_fist(true);
+
 ```
 
 ```{ojs}
