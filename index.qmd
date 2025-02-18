@@ -2,12 +2,12 @@
 page-layout: custom
 ---
 
-Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the <a href="https://www.openresearchlab.org/about" class="mono-link">Open Research Lab</a>, a San Fransisco based research group, and for Toronto’s own <a href="https://www.cleanairpartnership.org/about/" class="mono-link">Clean Air Partnership</a>, a charitable environmental organization.
+Hi. I’m Ethan, a Masters of Statistics student at the University of Toronto. I also work as a freelance data-analyst for the [Open Research Lab](https://www.openresearchlab.org/about), a San Fransisco based research group, and for Toronto’s own [Clean Air Partnership](https://www.cleanairpartnership.org/about/), a charitable environmental organization. My research interests include statistical software design and reproducibility in social science research.
 
-<p style = "padding-top:0px;">My research interests include statistical software design, reproducibility in social science research, and causal inference. Interact with the black boxes ↓ to preview some of my personal projects.</p>
+<p style = "padding-top:0px;">Interact with the black boxes ↓ to preview some of my personal projects.</p>
 
 <!--TODO: There's a more idiomatic way to add HTML with :::{.id}, do that--->
-<!-- Check this out, seems to be the better way to delcare HTML in Quarto: https://github.com/realworlddatascience/realworlddatascience.github.io/blob/main/index.qmd --->
+<!-- Check this out, seems to be the better way to declare HTML in Quarto: https://github.com/realworlddatascience/realworlddatascience.github.io/blob/main/index.qmd --->
 
 <!--This is the filter selection for the D3 below--->
 
@@ -720,7 +720,3 @@ This website is hosted on Netlify, programmed in R, using Quarto. See this <a hr
 I haven't set up a way for you to contact me yet.
 :::
 :::
-
-<!--TODO: Add a footer!--->
-
-<br> <br> <br>
