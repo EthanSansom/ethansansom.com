@@ -4,6 +4,7 @@ date: "2025-01-30"
 categories: ["package", "{vctrs}"]
 image: "vlightr_hex.png"
 smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
+git: "https://github.com/EthanSansom/vlightr"
 description: |
   Conditionally format vectors of any class in R using {cli} text formatting.
   {vlightr} makes interactive data explication easier, by allowing elements of
@@ -12,15 +13,65 @@ summary: |
   Conditionally format vectors of any class in R using {cli} text formatting.
   {vlightr} makes interactive data explication easier, by allowing elements of
   vectors and dataframe columns to be found with ease.
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
-```{r notes}
-#| echo = FALSE
+<br>
 
-# Each start page should have:
-# - a long `description` and shorter `summary`
-# - a link to the main `image`
-# - `categories` which will allow us to filter posts
+```{r setup, include = FALSE}
+library(dplyr)
+library(rlang)
+set.seed(123)
 ```
 
-This is a sample post for the `{vlightr}` package.
+For the past few years I have worked behind the scenes writing analysis
+code for this [study](https://www.nber.org/papers/w32719) (and its
+[friends](https://www.openresearchlab.org/studies/unconditional-cash-study/documentation)).
+Over the course of the study, 3,000 participant's received dozens of
+surveys, some annual, others monthly, and a few daily, which comprised
+thousands of questions. Many weeks, it was my job to comb through this
+survey data and bring my boss the most suspicious looking observations
+(potential typos, data collection errors, contradicting responses, and
+the like).
+
+During our weekly zoom meetings, screen-sharing my tiny R-Studio
+console, I frantically live coded to `filter()` and `select()` ever
+smaller subsets of data while saying things like *"participant ID 5910295
+responded `expense_toys_children` of \$90 in Survey 10, but in Survey 8
+and Survey 12 said they had `n_children_in_household = 0`, so the
+children expense questions should have been skipped"*. 
+
+```{r survey-data, echo = FALSE}
+# TODO:
+# - add weird survey names
+# - add NAs
+# - insert the problem you talk about into the data
+# - "my boss and I would spend some time quiniting at the following", praying
+#   I had said the correct partipant ID
+# - show how I wrote the original `highlight()` to solve this problem
+
+# Names and values to sample for the `expense_*` questions
+expense_questions <- paste0("expense_", c(
+  "toys_children", "school_children", "food_children", "care_children",
+  "food_out", "food_in", "books", "cars", "household", "recreation", "savings", 
+  "insurance"
+))
+expense_values <- round(seq(0, 1000, length.out = 2000), 2)
+
+survey_data <- 
+  tibble(
+    pid = c(rep(5910295, 10), rep(5910429, 10)),
+    survey = rep(paste("Survey", 3:12), 2),
+    n_children_in_household = 0
+  ) %>%
+  mutate(
+    !!!rep_named(expense_questions, 0),
+    across(all_of(expense_questions), ~sample(expense_values, 20))
+  )
+```
+
+
+{vlightr} is an R package for highlighting arbitrary vectors in R. It
+began as one function, `highlight()`, which I wrote at work
