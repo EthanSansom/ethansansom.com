@@ -1,0 +1,9 @@
+/* Makes package hex symbols expand a little on hover */
+
+.listing-image img {
+  transition: transform 0.3s ease-in-out;
+}
+
+.listing-image img:hover {
+  transform: scale(1.05);
+}

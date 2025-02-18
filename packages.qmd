@@ -1,6 +1,7 @@
 ---
-title: "Packages"
+# title: "Packages"
 page-layout: custom
+css: "assets/packages-styles.css"
 listing:
   id: listing-packages
   template: packages.ejs
@@ -9,7 +10,7 @@ listing:
     categories: "package"
 ---
 
-<!-- TODO: Add some better padding below the page title! --->
+<div class = "big-title">Packages</div>
 
 ::: {#listing-packages}
 :::

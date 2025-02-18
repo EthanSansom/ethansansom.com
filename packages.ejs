@@ -11,12 +11,18 @@
 
 ::::: {.listing-image}
 ```{=html}
-<img src="<%= item.image %>" alt="Listing image" class="card-img-top"/>
+<img  
+  src="<%= item.image %>" 
+  alt="Listing image" 
+  class="card-img-top"
+  onclick="window.open('<%= item.git %>', '_blank')"
+  style="cursor: pointer;"
+/>
 ```
 :::
 
 :::: {.card-title .listing-title}
-<a class="mono-link" href="<%= item.href %>" style="text-decoration:none;">
+<a class="mono-link" href="<%= item.path %>" style="text-decoration:none;">
   <h2 style="text-align:left;"> <%= item.title %> </h2>
 </a>
 :::
@@ -26,7 +32,7 @@
 :::
 
 :::: {.card-text .listing-link}
-<a class="mono-link" href="<%= item.href %>">
+<a class="mono-link" href="<%= item.path %>">
   <p style="text-align:left;">Read More -></p>
 </a>
 :::
