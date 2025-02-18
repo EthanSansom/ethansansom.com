@@ -1,5 +1,5 @@
 ---
-title: "Posts"
+# title: "Posts"
 page-layout: custom
 css: "assets/posts-styles.css"
 listing:
@@ -14,3 +14,5 @@ listing:
     title: "Title"
     description: "Description"
 ---
+
+<div class = "big-title">Posts</div>
