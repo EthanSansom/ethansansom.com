@@ -37,28 +37,8 @@ below and vent your frustration.
 //| echo: false
 //| output: false
 
-// TODO: 
-// - Read all of: https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
-// - Look at the Matter.js documentation page (and examples at the bottom) for
-//   style inspiration!
-//    - Implement some kind of fun physics simulation for your about page
-
-// TODO: Think about the margins. Make some functions which take SVG co-ordiantes
-// that D3 expects and the margins and convert them to Matter coordinates so I
-// don't need to think about it!
-
-// TODO: Clean up all of this code and make a `reset` button, so you don't
-// need to refresh the page! Basically, just wrap all of this code in a function.
-// Have D3 fade out any remaining objects and then fade them all back in afterwards.
-// Have the fist drop from the sky on reset!
-// Have the title of the plot increment!
-
-// TODO: Manually set the z-index of text on this page to -1, since the effect
-// is way more fun when the text goes behind the "fist".
-
-// TODO: Don't colour things manually, make some classes in the custom light
-// and custom dark CSS which we can use for data elements in the normal plots.
-// Since I'll mostly just be done the blue + black + white thing.
+// TODO: Add `is_mobile` and make the width 400 + remove some of the bars if
+// we're in a mobile setting.
 
 // Imports ---------------------------------------------------------------------
 
@@ -71,11 +51,11 @@ Composite = Matter.Composite
 
 // Constants -------------------------------------------------------------------
 
-// Colors
-offwhite = "#FFFBFC";
+// Mobile detection
+is_mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // Dimensions of the SVG viewbox and margins, defines our world-space
-width = 800;
+width = is_mobile ? 400 : 800;
 height = 400;
 stroke_width = 1;
 
@@ -99,25 +79,29 @@ duration_bar_fade_out = 1000;
 //
 // https://stackoverflow.com/questions/64772783/how-can-i-change-the-collisionfilter-of-an-object-so-it-can-no-longer-interact-w/73262781#73262781
 
+// TODO: Make this a little more robust!
+// 
 // Generate 20 years of random data, ending last year
-offsets = d3.shuffle(d3.range(-10, 10)).slice(0, 20);
+num_years = is_mobile ? 10 : 20;
+scale = is_mobile ? 5 : 10;
+offsets = d3.shuffle(d3.range(-10, 10)).slice(0, num_years);
 this_year = new Date().getFullYear();
 data = d3
-  .range(this_year - 20, this_year)
+  .range(this_year - num_years, this_year)
   .map((year, i) => ({
     label: year,
     // Fix the maximum value so that the y-axis always looks consistent
-    value: (i == 19) ? 190 : Math.max((i * 10) + offsets[i], 10)
+    value: (i == (num_years - 1)) ? (num_years - 1) * scale : Math.max((i * scale) + offsets[i], scale)
   }))
 
 // Rotating plot titles (cycle on plot re-set)
 plot_title_index = [0];
 plot_titles = [
-  "P-value of 0.55 (never published)",
-  "P-value of 0.00001",
+  "P-value of 0.055 (never published)",
   "Didn’t survive FDR",
   "Lasso selected none of my favourites",
-  "Adding another hyper-prior didn’t help",
+  "Adding another hyperprior didn’t help",
+  "P-value of 0.00001",
   "32 hour bootstrap"
 ];
 
@@ -133,6 +117,10 @@ vertices_to_points = function(vertices) {
 // Move the z-index of all text backwards, it looks nicer when the physics
 // objects appear above the rest of the article text.
 d3.select("#title-block-header")
+  .style("position", "relative")
+  .style("z-index", -1);
+
+d3.select(".nav-footer")
   .style("position", "relative")
   .style("z-index", -1);
 
@@ -278,16 +266,6 @@ mouse_constraint = Matter.MouseConstraint.create(engine, {
   constraint: { stiffness: 0.5 } // Raising stiffness makes drag less "springy"
 })
 Composite.add(engine.world, mouse_constraint);
-
-// TODO: Tune the options and fix whatever about this makes Quarto mad
-/*
-body_options = {
-  restitution: 0.6,  // Bounciness (0 = no bounce, 1 = perfect bounce)
-  friction: 0.3,     // Surface friction (higher = slower slides)
-  frictionAir: 0.01, // Air resistance (prevents excessive sliding)
-  density: 0.001     // Mass per unit area (affects inertia)
-};
-*/
 
 // Create the bar chart physics bodies and render them to the screen
 create_bars = function(first = false) {
@@ -544,6 +522,7 @@ create_bars(true);
 create_fist(true);
 
 ```
+
 
 ```{ojs}
 //| echo: false
