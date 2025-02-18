@@ -42,10 +42,22 @@ a.nav-link:visited span {
 
 a.nav-link:active span {
   color: $offblack;
+  text-decoration: none;
 }
 
 a.nav-link:hover span {
   color: $lightblue;
+  text-decoration: none;
+}
+
+a {
+  color: $offblack;
+  text-decoration: underline;
+}
+
+a:hover {
+  color: $lightblue;
+  text-decoration: underline;
 }
 
 a.title.listing-title:hover {
@@ -60,6 +72,26 @@ a.mono-link {
 a.mono-link:hover {
   color: $lightblue;
   text-decoration: underline;
+}
+
+.blue-hover:hover, .blue-hover:hover *  {
+  color: $lightblue;
+}
+
+/* D3 Plot Elements ----------------------------------------------------------*/
+
+.plot-annotation {
+  fill: $offblack;
+}
+
+.plot-data-blue {
+  fill: $offwhite;
+  stroke: $lightblue;
+}
+
+.plot-data-black {
+  fill: $offwhite;
+  stroke: $offblack;
 }
 
 /* D3 Plot Grid --------------------------------------------------------------*/

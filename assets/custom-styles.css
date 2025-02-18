@@ -14,6 +14,18 @@
   margin-right: 15vw;
 }
 
+.nav-footer {
+  margin-left: 15vw;
+  margin-right: 15vw;
+}
+
+footer.footer .nav-footer {
+  padding-top: 2em;
+  padding-bottom: 1em;
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
 #quarto-header>nav {
   padding-left: 15vw;
   padding-right: 15vw;
@@ -26,6 +38,11 @@
   }
 
   .page-layout-custom {
+    margin-left: 1em;
+    margin-right: 1em;
+  }
+  
+  .nav-footer {
     margin-left: 1em;
     margin-right: 1em;
   }
@@ -87,9 +104,14 @@ span, a, p {
   font-size: clamp(0.5rem, 3vw, 1rem);
 }
 
-h1 {
+.big-title {
   font-weight: var(--weightextrabold);
   font-size: clamp(3rem, 18vw, 8rem);
+}
+
+h1 {
+  font-weight: var(--weightextrabold);
+  font-size: clamp(3rem, 9vw, 4rem);
 }
 
 h3 {

@@ -5,7 +5,6 @@ website:
   title: "Ethan Sansom"
   search: false
   navbar:
-    # title: "Ethan Sansom"
     right:
       - href: about.qmd
         text: About
@@ -13,10 +12,20 @@ website:
         text: Posts
       - href: packages.qmd
         text: Packages
+  page-footer:
+    left: "© 2025 Ethan Sansom"
+    # Quarto uses bootstrap icons: https://icons.getbootstrap.com/?q=code
+    right:
+    - icon: github
+      href: "https://github.com/EthanSansom"
+      aria-label: GitHub
+    - icon: code-slash
+      href: "https://github.com/EthanSansom/ethansansom.com"
+      aria-label: Website Repository
 
 format:
   html:
-    mainfont: Inter
+    mainfont: Inter # Oswald (for testing)
     theme:
       light: [flatly, assets/custom-theme-light.scss]
       dark: [darkly, assets/custom-theme-dark.scss]
