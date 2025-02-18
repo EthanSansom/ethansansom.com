@@ -1,0 +1,270 @@
+---
+title: "Emoji Collisions"
+date: "2025-02-17"
+categories: ["D3", "Matter.js", "Data Visualization"]
+# image: "vlightr_hex.png"
+# smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
+summary: |
+  A test of emoji collisions.
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+<br>
+
+:::: {#matter-container}
+::::
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// TODO: Add `is_mobile` and make the width 400 + remove some of the bars if
+// we're in a mobile setting.
+
+// Imports ---------------------------------------------------------------------
+
+d3 = require("d3");
+Matter = require("matter-js");
+
+Engine = Matter.Engine
+Bodies = Matter.Bodies
+Composite = Matter.Composite
+
+// Constants -------------------------------------------------------------------
+
+// Mobile detection
+is_mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+// Dimensions of the SVG viewbox and margins, defines our world-space
+width = 400;
+height = 400;
+stroke_width = 1;
+
+margin_left = 10;
+margin_right = 10;
+margin_top = 10;
+margin_bottom = 10;
+
+// Collision filters for Matter.js, note that these need to be powers of 2
+collision_fist = 0x0001;
+collision_bar = 0x0002;
+collision_mouse = 0x0004;
+
+// Helpers ---------------------------------------------------------------------
+
+// Transform Matter body vertices into SVG <polygon> points
+vertices_to_points = function(vertices) {
+  return vertices.map(vertex => `${vertex.x},${vertex.y}`).join(" ")
+}
+
+// SVG -------------------------------------------------------------------------
+
+// Move the z-index of all text backwards, it looks nicer when the physics
+// objects appear above the rest of the article text.
+d3.select("#title-block-header")
+  .style("position", "relative")
+  .style("z-index", -1);
+
+d3.select(".nav-footer")
+  .style("position", "relative")
+  .style("z-index", -1);
+
+// Set the SVG viewbox
+svg = d3.select("#matter-container")
+  // TODO: I've only gotten Matter.js to work with a fixed width/height 
+  // container. Look into whether a reactive size is possible!
+  .style("width", width + "px")
+  .style("height", height + "px")
+  .append("svg")
+  .attr("viewBox", [0, 0, width, height])
+  .attr("style", "max-width: 100%; height: auto;")
+  // Allows the physics objects to fall outside of the viewbox
+  .attr("overflow", "visible");
+
+// Physics ---------------------------------------------------------------------
+
+// Create an engine
+engine = Engine.create();
+
+// Global variable which records all physics objects in the scene
+bodies = engine.world.bodies;
+
+// The ground
+ground_width = 10;
+ground = Bodies.rectangle(
+  width / 2, height - (margin_bottom / 2), width, margin_bottom,
+  { 
+    isStatic: true, 
+    label: "ground"
+  }
+);
+Composite.add(engine.world, ground);
+  
+// Add a mouse constraint, which allows the "fist" to be manipulated (dragged)
+// using the mouse.
+
+mouse = Matter.Mouse.create(document.querySelector("#matter-container"));
+// mouse.pixelRatio = window.devicePixelRatio; // TODO: Figure this out
+mouse_constraint = Matter.MouseConstraint.create(engine, {
+  mouse: mouse,
+  collisionFilter: {
+    category: collision_mouse,
+    mask: collision_fist
+  },
+  constraint: { stiffness: 0.5 }
+})
+Composite.add(engine.world, mouse_constraint);
+
+/* Add a test emoji ----------------------------------------------------------*/
+
+// TODO: You broke it during demonstration, go back and fix the relative size
+// of the emoji and the collision body!!!
+
+// TODO: Here's what we're going to do! Write a script which adds points to
+// the screen (over an emoji) on mouse click, then we can use those points to
+// CREATE the correct bounding polygon using Matter.js!
+
+// Create the physics object
+circle_x = width / 2;
+circle_y = height - (margin_bottom / 2) - (50 / 2);
+
+// Vertices for the pine-tree emoji
+tree_vertices = [
+  {x: 103, y: 32},
+  {x: 122, y: 65},
+  {x: 131, y: 83},
+  {x: 141, y: 105},
+  {x: 145, y: 118},
+  {x: 132, y: 134},
+  {x: 118, y: 133},
+  {x: 109, y: 133},
+  {x: 109, y: 139},
+  {x: 94, y: 138},
+  {x: 94, y: 128},
+  {x: 78, y: 127},
+  {x: 55, y: 124},
+  {x: 67, y: 96},
+  {x: 79, y: 73},
+  {x: 83, y: 64}
+];
+
+create_circle_emoji(circle_x, circle_y, "😭");
+// create_circle_emoji(circle_x + 16, circle_y - 100, "😙");
+// create_circle_emoji(circle_x -50, circle_y - 200, "😉");
+
+// This is a little snippet that allows you to draw points around
+// an emoji, placed at the center of the screen, and log the coordinates
+// to the console. I use it to create bounding boxes for the non-circular
+// emojis.
+test = function(emoji) {
+  const emo_x = width / 2;
+  const emo_y = height / 2;
+  const font_size = 107
+
+  // Render the `emoji` to the center of the svg
+  svg
+    .append("text")
+    .attr("x", emo_x)
+    .attr("y", emo_y)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("font-size", font_size)
+    .style("user-select", "none")
+    .style("pointer-events", "none")
+    .text(emoji)
+  
+  // Add a red circle and log it's location on click
+  svg.on("click", function (event) {
+    // `d3.pointer()` takes the click event and provides an
+    // array with `x` at [0] and `y` at [1].
+    const [x, y] = d3.pointer(event);
+    console.log(`{x: ${Math.round(x)}, y: ${Math.round(y)}}`)
+    
+    svg.append("circle")
+      .attr("cx", x)
+      .attr("cy", y)
+      .attr("r", 5)
+      .attr("fill", "red")
+  });
+}
+
+// Create a circular emoji of a fixed radius (50). I've tuned the emoji font
+// size and y-position-offset ("dy") so that it's well centered.
+create_circle_emoji = function(x, y, emoji) {
+  // Add the physics body
+  const circle = Bodies.polygon(x, y, 50, 26);
+  Composite.add(engine.world, circle);
+  
+  // Add the emoji text, must be a circular emoji
+  svg
+    .append("text")
+    .attr("id", `body-${circle.id}`)
+    .attr("x", circle.position.x)
+    .attr("y", circle.position.y)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("dy", 13)
+    .attr("font-size", 107)
+    .style("user-select", "none")
+    .style("pointer-events", "none")
+    .text(emoji)
+    .raise()
+    
+  // Initialize the physics body SVG bounding box
+  svg
+    .append("polygon")
+    .attr("id", `body-bounding-box-${circle.id}`)
+    .attr("points", vertices_to_points(circle.vertices))
+    // It seems like you have to have a non-none "fill" attribute to allow
+    // for cursor events like grab, so setting the opacity instead. We want
+    // the cursor detection working on the bounding box, since it's more precise
+    // than the bounds of the emoji <text> element.
+    .attr("opacity", 0)
+    .attr("cursor", "grab")
+    .on("mousedown", function() { d3.select(this).style("cursor", "grabbing"); })
+    .raise()
+}
+```
+
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// As always, Danielle Navarro is the best. OJS cells implicitly iterates over
+// generator functions (`function*`) repeatedly, which allows them to be used
+// as update/game loops. See this blog post for details:
+// https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
+
+// Engine/render update loop. We're using Matter.js to increment each physics
+// step and D3.js to re-render the physics bodies in their new positions.
+function* update() {
+  
+  while (true) {
+    // Update the engine
+    Engine.update(engine, 5)
+    
+    // Update the positions of the bodies, using the text
+    bodies.filter(body => body.label != "ground").forEach(body => {
+      const body_angle = body.angle * (180 / Math.PI);
+      const body_x = body.position.x;
+      const body_y = body.position.y;
+      svg.select(`#body-${body.id}`)
+        .attr("x", body_x)
+        .attr("y", body_y)
+        .attr("transform", `rotate(${body_angle}, ${body_x}, ${body_y})`);
+        
+      // Draw the background as well (TODO: Remove, this is just for testing)
+      svg.select(`#body-bounding-box-${body.id}`).attr("points", vertices_to_points(body.vertices))
+    })
+    
+    // Finish
+    yield
+  }
+}
+
+// Call the `update()` function once to begin the loop
+update();
+```
