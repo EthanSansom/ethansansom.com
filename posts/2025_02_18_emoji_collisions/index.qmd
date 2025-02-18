@@ -150,7 +150,31 @@ tree_vertices = [
   {x: 83, y: 64}
 ];
 
-create_circle_emoji(circle_x, circle_y, "😭");
+emoji = "🌲";
+
+tree = Bodies.fromVertices(width / 2, height / 2, tree_vertices);
+Composite.add(engine.world, tree);
+
+svg
+  .append("polygon")
+  .attr("id", `body-bounding-box-${tree.id}`)
+  .attr("points", vertices_to_points(tree.vertices))
+  .attr("fill", "red")
+  .lower()
+
+svg
+  .append("text")
+  .attr("id", `body-bounding-box-${tree.id}`)
+  .attr("x", tree.position.x)
+  .attr("y", tree.position.y)
+  .attr("text-anchor", "middle")
+  .attr("dominant-baseline", "middle")
+  .attr("font-size", 107)
+  .style("user-select", "none")
+  .style("pointer-events", "none")
+  .text(emoji)
+
+// create_circle_emoji(circle_x, circle_y, "😭");
 // create_circle_emoji(circle_x + 16, circle_y - 100, "😙");
 // create_circle_emoji(circle_x -50, circle_y - 200, "😉");
 
@@ -190,9 +214,41 @@ test = function(emoji) {
   });
 }
 
+// Using this for testing, colors the SVG bounds so we can do collision tuning
+create_circle_emoji = function(x, y, emoji) {
+  // Add the physics body
+  const circle = Bodies.polygon(x, y, 50, 50);
+  Composite.add(engine.world, circle);
+  
+  // Add the emoji text, must be a circular emoji
+  svg
+    .append("text")
+    .attr("id", `body-${circle.id}`)
+    .attr("x", circle.position.x)
+    .attr("y", circle.position.y)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("dy", 13)
+    .attr("font-size", 107)
+    .style("user-select", "none")
+    .style("pointer-events", "none")
+    .text(emoji)
+    .raise()
+    // For testing
+    .attr("opacity", 0.5)
+    
+  // Initialize the physics body SVG bounding box
+  svg
+    .append("polygon")
+    .attr("id", `body-bounding-box-${circle.id}`)
+    .attr("points", vertices_to_points(circle.vertices))
+    .attr("fill", "red")
+    .lower()
+}
+
 // Create a circular emoji of a fixed radius (50). I've tuned the emoji font
 // size and y-position-offset ("dy") so that it's well centered.
-create_circle_emoji = function(x, y, emoji) {
+create_circle_emoji_proper = function(x, y, emoji) {
   // Add the physics body
   const circle = Bodies.polygon(x, y, 50, 26);
   Composite.add(engine.world, circle);
