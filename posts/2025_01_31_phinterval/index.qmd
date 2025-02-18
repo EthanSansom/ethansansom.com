@@ -4,6 +4,7 @@ date: "2025-01-30"
 categories: ["package", "{lubridate}", "{Rccp}", "C++"]
 image: "phinterval_hex.png"
 smallimage: '<img src="posts/2025_01_31_phinterval/phinterval_small.png">'
+git: "https://github.com/EthanSansom/phinterval"
 description: |
   A free DLC for the {lubridate} package which which makes it fast and easy to perform set   operations (e.g. intersection, union, set-difference) on date intervals. 
   Disclaimer, I am not affiliated with {lubridate}!
