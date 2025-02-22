@@ -4,6 +4,8 @@ page-layout: custom
 css: "assets/posts-styles.css"
 listing:
   contents: posts
+  exclude:
+    categories: "draft"
   type: table
   sort: "date desc"
   filter-ui: false
