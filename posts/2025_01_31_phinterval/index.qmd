@@ -6,11 +6,517 @@ image: "phinterval_hex.png"
 smallimage: '<img src="posts/2025_01_31_phinterval/phinterval_small.png">'
 git: "https://github.com/EthanSansom/phinterval"
 description: |
-  A free DLC for the {lubridate} package which which makes it fast and easy to perform set   operations (e.g. intersection, union, set-difference) on date intervals. 
-  Disclaimer, I am not affiliated with {lubridate}!
+  A free DLC for the {lubridate} package which which makes it fast and easy to perform set operations (e.g. intersection, union, set-difference) on datetime intervals. Disclaimer, I am not affiliated with {lubridate}!
 summary: |
-  A free DLC for the {lubridate} package which which makes it fast and easy to perform set   operations (e.g. intersection, union, set-difference) on date intervals. 
-  Disclaimer, I am not affiliated with {lubridate}!
+  A free DLC for the {lubridate} package which which makes it fast and easy to perform set operations (e.g. intersection, union, set-difference) on datetime intervals. Disclaimer, I am not affiliated with {lubridate}!
 ---
 
-This is a sample post for the `{phinterval}` package.
+<br>
+
+### {lubridate} is Great
+
+I love [{lubridate}](https://lubridate.tidyverse.org/index.html) because I do not 
+love working with dates - or their malicious cousins, times. This is probably a 
+chiché among people who think about data for a living, but I will reiterate it 
+anyway; I don't like thinking about time zones, leap years, how many days are in 
+April, or dealing with base-60 arithmetic.
+
+Fortunately, {lubridate} provides a collection of datetime classes and 
+functions which, more often than not, wrap me in a bubble where I
+don't need to think about these things. If you're unfamiliar with {lubridate}, 
+here are a few examples.
+
+```{r lubridate-demo}
+library(lubridate, warn.conflicts = FALSE)
+
+dyears(1) / dminutes()  # How many minutes are in an average year?
+ddays(366) / dminutes() # How many minutes are in a leap year?
+
+# Convert a UTC datetime to an EST datetime
+with_tz(ymd_hms("2012-03-26 10:10:00", tz = "UTC"), "EST")
+```
+
+There is, however, one family of problems that {lubridate} does not like. Problems 
+with holes. Consider `work` and `lunch`, which measure the time-spans I spend at 
+work and on a lunch break on January 3rd 2025.
+
+```{r work-day}
+work <- interval("2025-01-03 09:00:00", "2025-01-03 17:00:00")
+lunch <- interval("2025-01-03 12:00:00", "2025-01-03 13:00:00")
+```
+
+What I'd like to analyze is the time that I was *actually* doing work, excluding
+my lunch break. My first instinct is to punch a hole through my `work` day using
+`setdiff()` to remove the time I spend at `lunch`. Unfortunately for me, this
+isn't going to work.
+
+```{r hole-punch-int}
+try(setdiff(work, lunch))
+```
+
+The phrase *"discontinuous intervals"* here is a fancier way of saying *"holey intervals"*.
+
+### Holey Intervals
+
+A \<phinterval\> is a “potentially-holey-interval” vector, i.e. it's an interval 
+which might contain gaps. In particular, each element of a \<phinterval\> 
+vector is a set of non-overlapping, non-abutting datetime intervals. 
+
+```{r phinterval-demo}
+library(phinterval)
+
+jan_seventh <- interval(as.Date("2020-01-07"), as.Date("2020-01-08"))
+jan_9_to_10 <- interval(as.Date("2020-01-09"), as.Date("2020-01-10"))
+jan_9_to_12 <- interval(as.Date("2020-01-09"), as.Date("2020-01-12"))
+
+# Create a length-1 <phinterval> vector
+phint <- phinterval(c(jan_seventh, jan_9_to_10, jan_9_to_12))
+print(phint)
+```
+
+A few things of note about the \<phinterval\> vector `phint`:
+
+1. The element `phint[[1]]` describes two non-overlapping time spans.
+2. `phint[[1]]` contains a "hole" during January the 8th.
+3. When creating `phint`, `phinterval()` combined `jan_9_to_10` and `jan_9_to_12`.
+
+Many date and time related concepts are naturally represented by a \<phinterval\>,
+including which portion of the day was I actually working on January 3rd, 2025.
+
+```{r hole-punch-phint}
+phint_diff(work, lunch)
+```
+
+### Hard Questions with Dates
+
+To further motivate the existence of a \<phinterval\>, lets consider a fake 
+`employment` dataset. We'll pretend that we're government employees who've been 
+tasked with analyzing the employment history of respondents to the latest census 
+survey. Each person who responded to the census provided us with the title and 
+start/end date of every job they've ever held.
+
+```{r setup}
+#| include = FALSE
+
+employment <- tibble::tribble(
+  ~"name", ~"job_title", ~"job_interval",
+  "Bruce", "Industrialist", interval("1939-03-01", "1940-06-01"),
+  "Bruce", "Philanthropist", interval("1942-01-01", "1945-01-01"),
+  "Bruce", "Vigilante", interval("1943-01-01", "1947-01-01"),
+  "Clark", "Journalist", interval("1938-04-01", "1944-01-01"),
+  "Clark", "Coach", interval("1946-01-01", "1947-06-01"),
+  "Tony", "Inventor", interval("1962-12-01", "1963-06-01"),
+  "Tony", "CEO", interval("1964-01-01", "1967-01-01"),
+  "Tony", "Consultant", interval("1966-01-01", "1967-01-01"),
+  "Natasha", "Spy", interval("1964-04-01", "1970-01-01")
+)
+```
+
+```{r job-sample}
+print(employment)
+```
+
+Our boss has a few questions for us:
+
+- When was each respondent employed?
+- When did each respondent have gaps in their employment?
+
+We'll focus on `"Bruce"` first. Our office uses the {tidyverse}, so
+we'll be working with {dplyr}, {ggplot2}, and {lubridate}.
+
+```{r bruce-employment}
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+
+bruce_employment <- employment |> filter(name == "Bruce")
+```
+
+Let's plot the duration of each of his jobs to get a lay of the land.
+
+```{r bruce-employment-plot}
+#| code-fold: true
+#| code-summary: "Plot Code"
+#| dev: "png"
+#| dev.args: !expr list(bg = "transparent")
+#| out.width: 100%
+#| fig.asp: 0.45
+
+bruce_plot <- bruce_employment |>
+  mutate(
+    job_start = int_start(job_interval),
+    job_end = int_end(job_interval)
+  )
+
+bruce_plot |>
+  ggplot() +
+  geom_segment(
+    aes(
+      y = job_title, yend = job_title,
+      x = job_start, xend = job_end
+    ),
+    colour = "#38B873",
+    arrow = arrow(angle = 45, ends = "both", length = unit(10, "pt")),
+    linewidth = 1.5
+  ) +
+  labs(title = NULL, x = NULL, y = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+```
+
+The time spans we want to find, Bruce's employment at any job and his unemployment
+between jobs, look like this.
+
+```{r bruce-employment-goal}
+#| code-fold: true
+#| code-summary: "Plot Code"
+#| dev: "png"
+#| dev.args: !expr list(bg = "transparent")
+#| out.width: 100%
+#| fig.asp: 0.3
+
+bruce_plot <- tribble(
+  ~"job_title", ~"job_start", ~"job_end",
+  "Employed", as.Date("1939-03-01"), as.Date("1940-06-01"),
+  "Employed", as.Date("1942-01-01"), as.Date("1947-01-01"),
+  "Unemployed", as.Date("1940-06-01"), as.Date("1942-01-01")
+)
+
+bruce_plot |>
+  mutate(job_title = ordered(job_title, c("Unemployed", "Employed"))) |>
+  ggplot() +
+  geom_segment(
+    aes(
+      y = job_title, yend = job_title,
+      x = job_start, xend = job_end
+    ),
+    colour = if_else(bruce_plot$job_title == "Employed", "blue", "red"),
+    arrow = arrow(angle = 45, ends = "both", length = unit(10, "pt")),
+    linewidth = 1.5
+  ) +
+  labs(title = NULL, x = NULL, y = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+```
+
+To answer our boss's first question, we're looking to find the blue time-spans where
+Bruce was employed. This is surprisingly un-simple. Here's a handful of Stack Overflow posts with tens of thousands of views between them asking how to do exactly this:
+
+- [Combine overlapping intervals with lubridate](https://stackoverflow.com/questions/64653134/combine-overlapping-intervals-with-lubridate)
+- [Collapse and merge overlapping time intervals](https://stackoverflow.com/questions/53213418/collapse-and-merge-overlapping-time-intervals)
+- [How to flatten / merge overlapping time periods](https://stackoverflow.com/questions/28938147/how-to-flatten-merge-overlapping-time-periods)
+
+Answers to these questions suggest using packages ranging from {data.table} to {IRanges} to {ivs}. Here's a fast-ish solution using {base} R.
+
+```{r bruce-employment-merged}
+# Extract the start and end of each of Bruce's jobs
+intervals <- sort(bruce_employment$job_interval)
+starts <- int_start(intervals)
+ends <- int_end(intervals)
+
+# Do some magic to merge overlapping jobs
+overlap_groups <- c(
+  0, 
+  cumsum(as.numeric(lead(starts)) > cummax(as.numeric(ends)))[-length(ends)]
+)
+new_starts <- do.call(c, split(starts, overlap_groups) |> lapply(min))
+new_ends <- do.call(c, split(ends, overlap_groups) |> lapply(max))
+
+# Turn this back into an <Interval> vector
+bruce_employment_intervals <- interval(new_starts, new_ends)
+print(bruce_employment_intervals)
+```
+
+Suffice it to say, we've firmly left the warm embrace of {lubridate}'s intuitive
+API. To answer our boss's second question, when was Bruce unemployed between jobs,
+we perform another slightly less confusing dance.
+
+```{r bruce-unemployment-merged}
+# Extract the start and end of each of Bruce's employment spans
+starts <- int_start(bruce_employment_intervals)
+ends <- int_end(bruce_employment_intervals)
+
+# Turn the ends of employment into the starts of unemployment
+bruce_unemployment_intervals <- interval(ends[-length(ends)], starts[-1])
+print(bruce_unemployment_intervals)
+```
+
+And here, is the fruit of our labour.
+
+```{r bruce-employment-history-plot}
+#| code-fold: true
+#| code-summary: "Plot Code"
+#| dev: "png"
+#| dev.args: !expr list(bg = "transparent")
+#| out.width: 100%
+#| fig.asp: 3 / 6
+
+# Plot the duration of each of Bruce's jobs
+bruce_plot <- bruce_employment |>
+  bind_rows(
+    tibble(
+      job_title = c("Employed", "Employed", "Unemployed"),
+      job_interval = c(bruce_employment_intervals, bruce_unemployment_intervals)
+    )
+  ) |>
+  mutate(
+    job_start = int_start(job_interval),
+    job_end = int_end(job_interval),
+    job_title = ordered(
+      job_title, 
+      rev(c(
+        "Vigilante", "Philanthropist", "Industrialist", 
+        "Employed", "Unemployed"
+      ))
+    ),
+    colour = case_when(
+      job_title == "Employed" ~ "blue",
+      job_title == "Unemployed" ~ "red",
+      TRUE ~ "#38B873"
+    )
+  )
+
+bruce_plot |>
+  ggplot() +
+  geom_segment(
+    aes(
+      y = job_title, yend = job_title,
+      x = job_start, xend = job_end,
+      colour = colour
+    ),
+    arrow = arrow(angle = 45, ends = "both", length = unit(10, "pt")),
+    linewidth = 1.5
+  ) +
+  labs(title = NULL, x = NULL, y = NULL) +
+  scale_colour_identity() +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+```
+
+We present this plot to our boss. They look at us, perplexed, and ask why it
+took 30 minutes to make this one image. Anyhow, they grumble, for our next task we need to
+find all periods where Bruce and Clark were working at the same time.
+
+```{r clark-and-bruce}
+#| code-fold: true
+#| code-summary: "Plot Code"
+#| dev: "png"
+#| dev.args: !expr list(bg = "transparent")
+#| out.width: 100%
+#| fig.asp: 5 / 6
+
+employment |>
+  filter(name %in% c("Bruce", "Clark")) |>
+  mutate(
+    job_start = int_start(job_interval),
+    job_end = int_end(job_interval),
+    job_title = ordered(
+      job_title, 
+      rev(c(
+        "Vigilante", "Philanthropist", "Industrialist", 
+        "Journalist", "Coach"
+      ))
+    )
+  ) |>
+  ggplot() +
+  geom_segment(
+    aes(
+      y = job_title, yend = job_title,
+      x = job_start, xend = job_end,
+      colour = name
+    ),
+    arrow = arrow(angle = 45, ends = "both", length = unit(10, "pt")),
+    linewidth = 1.5,
+    key_glyph = draw_key_rect
+  ) +
+  labs(title = NULL, x = NULL, y = NULL, colour = NULL) +
+  scale_colour_manual(
+    labels = c("Bruce", "Clark"),
+    values = c("black", "gold")
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.background = element_blank(), 
+    plot.background = element_blank()
+  )
+```
+
+I'm going to spare you the details of how we'd do this, but it's not fun. And the
+questions only get more complicated from here.
+
+### Enter {phinterval}
+
+The goal of the {phinterval} package is to ever-so-slightly expand the bubble
+that {lubridate} created, so that we can solve problems like these using a familiar
+API. The \<phinterval\> vector class and it's methods are designed to look right
+at home alongside the classes implemented by {lubridate}:
+
+- \<Duration\> - A length of time in seconds.
+- \<Period\> - A length of time in minutes, hours, days, weeks, months, or years.
+- \<Interval\> - A span of time between two instants.
+- \<phinterval\> - An \<Interval\> which may contain holes.
+
+Returning to our boss's first request, what we're really trying to do is 
+flatten/merge/combine an \<Interval\> vector into a \<phinterval\> element. We
+can do this via `phint_squash()` which squashes an \<Interval\> vector into a
+scalar \<phinterval\>.
+
+```{r phint-squish}
+bruce_employed <- phint_squash(bruce_employment$job_interval)
+print(bruce_employed)
+```
+
+For our boss's second request, we just want to retrieve the "holes" of our 
+\<phinterval\> which represent the gaps in Bruce's employment. We can do this
+using `phint_invert()` which returns the gaps of an existing \<phinterval\> vector
+as a new \<phinterval\>.
+
+```{r phint-invert}
+phint_invert(bruce_employed)
+```
+
+{phinterval} really starts to shine when we use it alongside {dplyr}.
+
+```{r phinterval-dplyr}
+squashed <- employment |>
+  group_by(name) |>
+  summarize(employed = phint_squash(job_interval)) |>
+  mutate(unemployed = phint_invert(employed))
+
+print(squashed)
+```
+
+Our boss's intimidating third question is now just a matter of taking the 
+intersection of Bruce's and Clark's employment histories with `phint_intersect()`.
+
+```{r clark-bruce-combined}
+bruce_employed <- squashed$employed[squashed$name == "Bruce"]
+clark_employed <- squashed$employed[squashed$name == "Clark"]
+
+phint_intersect(bruce_employed, clark_employed)
+```
+
+And here's the plot to prove it works.
+
+```{r clark-bruce-combined-plot}
+#| code-fold: true
+#| code-summary: "Plot Code"
+#| dev: "png"
+#| dev.args: !expr list(bg = "transparent")
+#| out.width: 100%
+#| fig.asp: 6 / 6
+
+employment |>
+  filter(name %in% c("Bruce", "Clark")) |>
+  bind_rows(
+    tibble(
+      name = "Bruce + Clark",
+      job_title = "Both Employed",
+      job_interval = phint_to_spans(phint_intersect(bruce_employed, clark_employed))[[1]]
+    )
+  ) |>
+  mutate(
+    job_start = int_start(job_interval),
+    job_end = int_end(job_interval),
+    job_title = ordered(
+      job_title, 
+      rev(c(
+        "Vigilante", "Philanthropist", "Industrialist", 
+        "Journalist", "Coach", "Both Employed"
+      ))
+    ),
+    name = ordered(name, c("Bruce", "Clark", "Bruce + Clark"))
+  ) |>
+  ggplot() +
+  geom_segment(
+    aes(
+      y = job_title, yend = job_title,
+      x = job_start, xend = job_end,
+      colour = name
+    ),
+    arrow = arrow(angle = 45, ends = "both", length = unit(10, "pt")),
+    linewidth = 1.5,
+    key_glyph = draw_key_rect
+  ) +
+  labs(title = NULL, x = NULL, y = NULL, colour = NULL) +
+  scale_colour_manual(
+    labels = c("Bruce", "Clark", "Bruce + Clark"),
+    values = c("black", "gold", "purple")
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.background = element_blank(), 
+    plot.background = element_blank()
+  )
+```
+
+### The Catch
+
+Unfortunately, while all of the code in this demo works,
+{phinterval} is still a prototype. Because of it's non-standard data-structure,
+we can't use just use fast vectorized operators or primitive functions when 
+manipulating a \<phinterval\>'s data. Looking at the [source code](https://github.com/EthanSansom/phinterval/blob/main/R/phinterval.R) for
+the \<phinterval\> class you'll see a liberal use of `map()`, a wrapper around
+`base::lapply()`.
+
+This is slow, sometimes very slow. Compare the function body of `lubridate::int_end()`,
+which retrieves the end time of an \<Interval\>, with the function body of `phinterval::phint_end()`,
+which retrieves the end time of a \<phinterval\>.
+
+```{r slowness}
+body(lubridate::int_end)
+body(phinterval::phint_end)
+```
+
+{phinterval}, relatively speaking, is doing a lot of work to accomplish a pretty
+simple task. To improve performance, I'd like to implement a portion of the 
+{phinterval} package in C++ (with the help of the {Rcpp} package) and work on 
+optimizing the remaining R code.
+
+Until then, if you need fast and flexible interval operations, I'd recommend
+Davis Vaughn's great [{ivs}](https://davisvaughan.github.io/ivs/) package. It
+can do anything shown in this article and it's powered by fast 
+[{vctrs}](https://vctrs.r-lib.org/index.html) functions already written in C++.
+
+### Why {phinterval}
+
+If {ivs} works, why bother with {phinterval}? First, because writing new packages
+is fun. Second, because {ivs}, by design, is not meant to be an extension of the
+\<Interval\> vector (an \<ivs_iv\> can represent a right-open interval of any
+vector type which has methods for comparison and is supported by the {vctrs} package).
+
+{phinterval}, meanwhile, is designed to be a drop-in extension of the {lubridate} package. If
+you're lucky, and your boss doesn't ask too many questions, you'll never need it.
+If you're less lucky, you can take solace in the fact that you shouldn't need to
+change any of your existing {lubridate} work-flow to start working with {phinterval}.
+Any {lubridate} \<Interval\> vector can be coerced to an equivalent \<phinterval\>
+vector without loss of information, including instantaneous intervals. \<phinterval\>
+vectors also support many of the useful features of an \<Interval\>, including
+date arithmetic and coercion to a duration or period.
+
+Users of {lubridate} will already know how to use many of the `phint_*()` family
+of functions, all of which accept an \<Interval\> or \<phinterval\> vector as input.
+
+| {lubridate} | {phinterval} | Returns |
+|-----|-----|---------------|
+| `int_length()` | `phint_length()` | Length in seconds |
+| `int_start()` | `phint_start()` | Start date of the (ph)interval |
+| `int_end()` | `phint_end()` | End date of the (ph)interval |
+| `int_shift()` | `phint_end()` | A (ph)interval shifted up/down the timeline |
+| `int_overlaps()` | `phint_overlaps()` | Whether elements of two ph(intervals) overlap |
+| `%within%` | `%within%` | Whether a (ph)interval is within another ph(interval) |
+
+When you do need to reach for the unique functionality of {phinterval}, functions
+such as `phint_union()`, `phint_intersection()`, and `phint_diff()` all accept
+any \<Interval\> vector as input and output a \<phinterval\> vector with the 
+same timezone.
