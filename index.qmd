@@ -711,12 +711,16 @@ update(filter_posts(posts, default_post_category_option), posts, true);
 ::: g-col-6
 <h3>About this Website</h3>
 
-This website is hosted on Netlify, programmed in R, using Quarto. See this <a href="https://github.com/EthanSansom/ethansansom.com" class="mono-link">github repository</a> for the source code. The dynamic elements on this page are programmed using the D3 Javascript library.
+This website is hosted on Netlify, programmed with Javascript and R, using Quarto. See this <a href="https://github.com/EthanSansom/ethansansom.com" class="mono-link">github repository</a> for the source code. The dynamic elements on this page were created using the D3 Javascript library.
 :::
 
 ::: g-col-6
 <h3>Contact</h3>
 
-I haven't set up a way for you to contact me yet.
+You can reach me at <a href= "mailto:hello@ethansansom.com">hello@ethansansom.com</a>.
+If you'd like to report an issue with this website (a bug and not a misguided aesthetic
+choice), please [report an issue](https://github.com/EthanSansom/ethansansom.com/issues) 
+on GitHub instead.
+
 :::
 :::
