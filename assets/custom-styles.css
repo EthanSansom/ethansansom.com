@@ -99,7 +99,12 @@ footer.footer .nav-footer {
   margin: 0px 0px;
 }
 
-span, a, p {
+span, a, p, code, pre.sourceCode {
+  font-weight: var(--weightregular);
+  font-size: clamp(0.5rem, 3vw, 1rem);
+}
+
+.sourceCode {
   font-weight: var(--weightregular);
   font-size: clamp(0.5rem, 3vw, 1rem);
 }

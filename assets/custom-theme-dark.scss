@@ -1,10 +1,8 @@
 /*-- scss:defaults --*/
 
-// NOTE: Dark theme resources: 
-// https://m2.material.io/design/color/dark-theme.html
-
 // Import fonts
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
 
 // FLAG: Importing Oswald only for testing, since it's very distinct
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
@@ -14,10 +12,10 @@ $weightbold: 700;
 $weightsemibold: 500;
 $weightregular: 400;
 
-// Define colors (names are in reference to the lightmode equivilants)
-$offblack: #EEEEEC; // #FFFFFF; // #FFFBFC
-$offwhite: #18191B; // #1E1E1E;
-$lightblue: #96BFE3; // #1174C7; // #BD493C;
+// Define colors (dark-mode just inverts offblack and offwhite)
+$offblack: #FFFBFC;
+$offwhite: #1E1E1E;
+$lightblue: #96BFE3;
 
 // navbar
 $navbar-bg: $offwhite; // navbar
@@ -36,32 +34,38 @@ $link-color: $offblack; // hyperlinks
 
 /* <a> -----------------------------------------------------------------------*/
 
+// Nav-bar page links
+
 a.nav-link:visited span {
   color: $offblack;
 }
 
-a.nav-link:active span {
-  color: $offblack;
-  text-decoration: none;
-}
-
 a.nav-link:hover span {
   color: $lightblue;
-  text-decoration: none;
 }
+
+a.nav-link:active span {
+  color: $offblack;
+}
+
+// All links
 
 a {
   color: $offblack;
   text-decoration: underline;
 }
 
-a:hover {
+a:not(.nav-link):not(.navbar-brand):hover {
   color: $lightblue;
   text-decoration: underline;
 }
 
-a.title.listing-title:hover {
-  color: $lightblue;
+a:active {
+  color: $offblack;
+}
+
+a:visited {
+  color: $offblack;
 }
 
 a.mono-link {
@@ -74,9 +78,26 @@ a.mono-link:hover {
   text-decoration: underline;
 }
 
+.button-text {
+  color: $offblack;
+  text-decoration: wavy underline;
+  cursor: pointer;
+}
+
+.button-text:hover {
+  color: $lightblue;
+  text-decoration: wavy underline;
+}
+
 .blue-hover:hover, .blue-hover:hover *  {
   color: $lightblue;
 }
+
+/* <code> --------------------------------------------------------------------*/
+
+/* TODO: Think about code styling */
+
+/* code { color: $lightblue; } */
 
 /* D3 Plot Elements ----------------------------------------------------------*/
 
@@ -145,19 +166,20 @@ I may use this same grid as a kind of standard throughout the website.
   color: $offblack;
   border: none;
   text-decoration: underline;
+  cursor: pointer;
   /* Removes the downwards arrow after the selection text */
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
 }
 
-.group-select:hover {
-  color: $lightblue;
-}
-
 .group-select:focus {
   border: none;
   outline: none;
+}
+
+.group-select:hover {
+  color: $lightblue;
 }
 
 /* Quarto wraps the <select> object in <p>, this sets that wrapper's margin */

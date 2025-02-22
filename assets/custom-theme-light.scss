@@ -92,6 +92,12 @@ a.mono-link:hover {
   color: $lightblue;
 }
 
+/* <code> --------------------------------------------------------------------*/
+
+/* TODO: Think about code styling */
+
+/* code { color: $lightblue; } */
+
 /* D3 Plot Elements ----------------------------------------------------------*/
 
 .plot-annotation {
@@ -156,6 +162,7 @@ I may use this same grid as a kind of standard throughout the website.
 /* Filter Selection ----*/
 
 .group-select {
+  color: $offblack;
   border: none;
   text-decoration: underline;
   cursor: pointer;

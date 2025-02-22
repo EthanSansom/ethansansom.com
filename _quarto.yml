@@ -26,9 +26,12 @@ website:
 format:
   html:
     mainfont: Inter # Oswald (for testing)
+    monofont: Fira Code
     theme:
       light: [flatly, assets/custom-theme-light.scss]
       dark: [darkly, assets/custom-theme-dark.scss]
     css: assets/custom-styles.css
+    smooth-scroll: true
+    link-external-newwindow: true
 
 editor: source
