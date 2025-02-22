@@ -1,7 +1,7 @@
 ---
 title: "Emoji Collisions"
 date: "2025-02-17"
-categories: ["D3", "Matter.js", "Data Visualization"]
+categories: ["draft", "D3", "Matter.js", "Data Visualization"]
 # image: "vlightr_hex.png"
 # smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
 summary: |
@@ -20,8 +20,11 @@ editor:
 //| echo: false
 //| output: false
 
-// TODO: Add `is_mobile` and make the width 400 + remove some of the bars if
-// we're in a mobile setting.
+// TODO: Take a break from creating the emoji hit boxes, now that we've got the
+// method down, that's easy. Figure out where to put the SVG on the web-page
+// (and how big to make it), so that it takes up the entire floor. We don't actually
+// need to do that much work to make the sizing responsive, we just need to pick
+// an appropriate height and width (aspect ratio) such that it re-sizes correctly!
 
 // Imports ---------------------------------------------------------------------
 
