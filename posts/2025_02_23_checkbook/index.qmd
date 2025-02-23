@@ -1,0 +1,12 @@
+---
+title: "checkbook"
+date: "2025-02-23"
+categories: ["draft"]
+image: "checkbook_hex.svg"
+smallimage: '<img src="posts/2025_02_23_checkbook/checkbook_small.svg">'
+git: "https://github.com/EthanSansom"
+description: |
+  Checks written with {checkwriter}.
+summary: |
+  Checks written with {checkwriter}.
+---
