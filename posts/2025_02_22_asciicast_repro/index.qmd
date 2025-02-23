@@ -1,0 +1,260 @@
+---
+title: "vlightr"
+date: "2025-01-30"
+categories: ["package", "{vctrs}"]
+image: "vlightr_hex.png"
+smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
+git: "https://github.com/EthanSansom/vlightr"
+description: |
+  Conditionally format vectors of any class in R using {cli} text formatting.
+  {vlightr} makes interactive data explication easier, by allowing elements of
+  vectors and dataframe columns to be found with ease.
+summary: |
+  Conditionally format vectors of any class in R using {cli} text formatting.
+  {vlightr} makes interactive data explication easier, by allowing elements of
+  vectors and dataframe columns to be found with ease.
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+<br>
+
+```{r}
+#| label: asciicast-setup
+#| include: false
+#| cache: false
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "",
+  out.width = "100%",
+  cache = FALSE, # TODO: Set to TRUE once this is done
+  asciicast_knitr_output = "html"
+)
+
+asciicast::init_knitr_engine(
+  echo = TRUE,
+  echo_input = FALSE,
+  same_process = TRUE,
+  startup = quote({
+    library(cli)
+    options(
+      cli.num_colors = cli::truecolor,
+      asciicast_theme = list(background = c(255, 255, 255))
+    )
+    set.seed(1)
+  })
+)
+```
+
+```{asciicast}
+#| label: simulate-survey
+#| include: false
+simulate_survey <- function() {
+  # Names and values to sample for the `expense_*` questions
+  expense_questions <- paste0("expense_", c(
+    "toys_children", "school_children", "care_children",
+    "food", "insurance", "recreation"
+  ))
+  expense_values <- round(seq(0, 1000, length.out = 2000), 2)
+  
+  # Initialize sample survey dataset
+  survey_data <- 
+    tibble::tibble(
+      pid = c(rep(5910295, 10), rep(5910429, 10)),
+      survey = rep(paste("Survey", sprintf("%02d", 3:12)), 2),
+      n_children_in_household = 0
+    ) |>
+    dplyr::mutate(
+      !!!rlang::rep_named(expense_questions, 0),
+      dplyr::across(
+        dplyr::all_of(expense_questions), 
+        ~sample(expense_values, 20)
+      )
+    )
+  
+  # Set the number of children and which surveys each section is asked in
+  survey_data <- survey_data |>
+    dplyr::mutate(
+      n_children_in_household = dplyr::case_when(
+        pid == 5910295 & grepl("(04|08|12)$", survey) ~ 0,
+        pid == 5910429 & grepl("(04|08)$", survey) ~ 1,
+        pid == 5910429 & survey == "Survey 12" ~ 2,
+        TRUE ~ NA
+      ),
+      dplyr::across(
+        dplyr::all_of(expense_questions), 
+        ~ dplyr::if_else(grepl("(04|08|12)$", survey), NA, .x)
+      ),
+      dplyr::across(
+        dplyr::ends_with("_children"), 
+        ~ dplyr::if_else(pid == 5910295, NA, .x)
+      ),
+      # Insert the erroneous data
+      expense_toys_children = dplyr::case_when(
+        survey_data$pid == 5910295 & survey_data$survey == "Survey 09" ~ 90,
+        TRUE ~ expense_toys_children
+      )
+    )
+  
+  survey_data
+}
+```
+
+### Where's Waldo
+
+For the past few years I have worked behind the scenes writing analysis
+code for this [study](https://www.nber.org/papers/w32719) (and its
+[friends](https://www.openresearchlab.org/studies/unconditional-cash-study/documentation)).
+Over the course of the study, 3,000 participants received dozens of
+surveys, some annual, others monthly, and a few daily, which comprised
+thousands of questions. Many weeks, it was my job to comb through this
+survey data and bring my boss the most suspicious looking observations
+(potential typos, data collection errors, contradicting responses, and
+the like).
+
+During our weekly zoom meetings, screen-sharing my tiny R-Studio
+console, I frantically live coded to `filter()` and `select()` ever
+smaller subsets of data while saying things like:
+
+> "participant ID 5910295
+responded `expense_toys_children` of \$90 in Survey 09, but in Survey 08
+and Survey 12 said they had `n_children_in_household == 0`, so the
+children expense questions should have been skipped".
+
+Squinting at the \<tibble\> I had printed, hoping I'd said the correct participant 
+ID, my boss and I would go back and forth about which row or column I was talking about -
+I'd un-filter to look at all of a participant's survey data and then re-filter
+to spotlight the problematic observation. More difficult still was *asynchronous* 
+data-sharing, which involved many screen-shots of data shared over Slack and Google Docs
+annotated with clip-art arrows and informative labels such as *this one* or 
+*see, no response here*.
+
+::: {.callout-tip collapse="true"}
+## Squint Along with Me
+
+Play eye-spy and find the problem I've described. Note that `n_children_in_household` is only asked in Surveys 4, 8, and 12, while expense 
+questions are asked in every Survey.
+
+```{asciicast}
+#| label: preview-survey-data
+#| echo: false
+simulate_survey() |> dplyr::arrange(survey)
+```
+:::
+
+### My Digital Highlighter
+
+Several months into my potentially-problematic-data scavenger hunt I came across
+Davis Vaughan's [{ivs}](https://davisvaughan.github.io/ivs/) package. {ivs}, powered
+by the [{vctrs}](https://vctrs.r-lib.org/index.html) package, implements an \<ivs_iv\> "vector-super-class" which can turn many generic vectors in R into interval vectors. 
+Here's an example of {ivs} in action, creating both a date interval (similar to an \<Interval\> in {lubridate}) and an integer interval.
+
+```{r}
+#| label: ivs-demo
+# Date interval
+ivs::iv(
+  start = as.Date(c("2020-01-01", "2020-02-01")), 
+  end = as.Date(c("2020-01-05", "2020-02-12"))
+)
+
+# Integer interval
+ivs::iv(start = 1:3, end = 4:6)
+```
+
+Inspired by Vaughan's work, I created my own much-less-robust vector super-class, the
+\<highlight\> vector. Below is more-or-less the full original implementation.
+
+```{r}
+#| label: highlight
+#| echo: TRUE
+
+# Creates a new vector of class <highlight> containing a vector `x`,
+# an equal length vector of locations `at`, and a `highlighter` function.
+highlight <- function(x, at, highlighter = cli::col_yellow) {
+  data <- if (inherits(x, "highlight")) vctrs::field(x, "data") else x
+  at[is.na(at)] <- FALSE
+  
+  vctrs::new_rcrd(
+    fields = list(data = data, at = at),
+    highlighter = highlighter,
+    class = "highlight"
+  )
+}
+
+# The `format()` method of a <highlight> formats it's underlying data 
+# and then highlights elements at the locations specified by `at`.
+format.highlight <- function(x, ...) {
+  at <- vctrs::field(x, "at")
+  data <- vctrs::field(x, "data")
+  highlighter <- attr(x, "highlighter")
+  
+  out <- format(data, ...)
+  out[at] <- highlighter(out[at])
+  out
+}
+
+# Nicely display the type of a highlighted vector in a <tibble>
+vec_ptype_abbr.highlight <- function(x, ...) {
+  data <- vctrs::field(x, "data")
+  paste0("hl<", vctrs::vec_ptype_abbr(data), ">") 
+}
+```
+
+```{asciicast}
+#| include: false
+highlight <- function(x, at, highlighter = cli::col_yellow) {
+  data <- if (inherits(x, "highlight")) vctrs::field(x, "data") else x
+  at[is.na(at)] <- FALSE
+  
+  vctrs::new_rcrd(
+    fields = list(data = data, at = at),
+    highlighter = highlighter,
+    class = "highlight"
+  )
+}
+
+format.highlight <- function(x, ...) {
+  at <- vctrs::field(x, "at")
+  data <- vctrs::field(x, "data")
+  highlighter <- attr(x, "highlighter")
+  
+  out <- format(data, ...)
+  out[at] <- highlighter(out[at])
+  out
+}
+
+vec_ptype_abbr.highlight <- function(x, ...) {
+  data <- vctrs::field(x, "data")
+  paste0("hl<", vctrs::vec_ptype_abbr(data), ">") 
+}
+```
+
+Harnessing the magic of {vctrs}, these twenty-ish lines of code allow us to
+modify the `format()` method of nearly in vector in R^[This comes with the
+minor sacrifice of destroying all non-format-related functionality of the highlighted
+vector.]. Rather than playing Where's Waldo with my boss, this allowed me to 
+quickly `highlight()` any column in a survey dataset.
+
+```{asciicast}
+#| label: highlight-demo
+#| echo: TRUE
+library(dplyr, warn.conflicts = FALSE)
+
+survey_data <- simulate_survey()
+survey_data |>
+  filter(pid == 5910295) |>
+  mutate(across(everything(), ~highlight(.x, grepl("(8|9|12)$", survey))))
+```
+
+### The {vlightr} Package
+
+The `highlight()` function serves it's purpose admirably, but I couldn't resist
+the urge to slap some sick flame decals on it.
+
+TODO:
+
+- Show off the new `vlightr::highlight()` function
+- Return back to the survey example at the end and introduce templight
+- This isn't meant to be a full demo, just some fun frills. Mention Danielle Navaro's start-up page
+- Point the reader towards the {vlightr} website and github for further reading
