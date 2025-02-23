@@ -3,7 +3,7 @@ title: "typewriter"
 date: "2025-01-30"
 categories: ["Under Construction", "{rlang}"]
 image: "typewriter_hex.svg"
-smallimage: '<img src="posts/2025_01_31_typewriter/typewriter_small.png">'
+smallimage: '<img src="posts/2025_01_31_typewriter/typewriter_small.svg">'
 git: "https://github.com/EthanSansom/typewriter"
 description: |
   A type system for R inspired by the {typed} package. Enforce object and function

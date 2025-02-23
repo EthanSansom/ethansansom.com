@@ -3,7 +3,7 @@ title: "phinterval"
 date: "2025-01-30"
 categories: ["package", "{lubridate}", "{Rccp}", "C++"]
 image: "phinterval_hex.png"
-smallimage: '<img src="posts/2025_01_31_phinterval/phinterval_small.png">'
+smallimage: '<img src="posts/2025_01_31_phinterval/phinterval_small.svg">'
 git: "https://github.com/EthanSansom/phinterval"
 description: |
   A free DLC for the {lubridate} package which which makes it fast and easy to perform set operations (e.g. intersection, union, set-difference) on datetime intervals. Disclaimer, I am not affiliated with {lubridate}!
@@ -17,12 +17,12 @@ summary: |
 
 I love [{lubridate}](https://lubridate.tidyverse.org/index.html) because I do not 
 love working with dates - or their malicious cousins, times. This is probably a 
-chiché among people who think about data for a living, but I will reiterate it 
+cliché among people who think about data for a living, but I will reiterate it 
 anyway; I don't like thinking about time zones, leap years, how many days are in 
 April, or dealing with base-60 arithmetic.
 
 Fortunately, {lubridate} provides a collection of datetime classes and 
-functions which, more often than not, wrap me in a bubble where I
+functions which, more often than not, keep me safely within a bubble where I
 don't need to think about these things. If you're unfamiliar with {lubridate}, 
 here are a few examples.
 
@@ -63,6 +63,7 @@ which might contain gaps. In particular, each element of a \<phinterval\>
 vector is a set of non-overlapping, non-abutting datetime intervals. 
 
 ```{r phinterval-demo}
+# devtools::install_github("EthanSansom/phinterval")
 library(phinterval)
 
 jan_seventh <- interval(as.Date("2020-01-07"), as.Date("2020-01-08"))

@@ -3,7 +3,7 @@ title: "checkwriter"
 date: "2025-01-30"
 categories: ["Under Construction", "{rlang}"]
 image: "checkwriter_hex.svg"
-smallimage: '<img src="posts/2025_01_31_checkwriter/checkwriter_small.png">'
+smallimage: '<img src="posts/2025_01_31_checkwriter/checkwriter_small.svg">'
 git: "https://github.com/EthanSansom/checkwriter"
 description: |
   Easily write, compose, and edit functions for testing and checking objects in R.
