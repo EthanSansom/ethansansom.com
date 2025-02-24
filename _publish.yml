@@ -1,0 +1,4 @@
+- source: project
+  netlify:
+    - id: f13a391b-29c1-42f7-8546-ce3c20351a78
+      url: 'https://ethansansom.com'
