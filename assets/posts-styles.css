@@ -10,8 +10,15 @@ table td:nth-child(2)  {
   width: 200px;
 }
 
-a.title.listing-title {
-  width: 400px;
+/* Removes the "Photo" column on small screens. This is unfortunate, but allows
+the posts to be useable on mobile. */
+@media (max-width: 576px) {
+  table th:nth-child(1)  {
+    display: none;
+  }
+  table td:nth-child(1)  {
+    display: none;
+  }
 }
 
 /* Limit the Description column to 100px tall, truncating text with "..." */
