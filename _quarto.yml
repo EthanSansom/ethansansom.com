@@ -33,5 +33,6 @@ format:
     css: assets/custom-styles.css
     smooth-scroll: true
     link-external-newwindow: true
+    highlight-style: gruvbox # TODO: Customize
 
 editor: source
