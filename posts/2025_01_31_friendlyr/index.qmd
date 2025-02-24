@@ -1,7 +1,7 @@
 ---
 title: "friendlyr"
 date: "2025-01-30"
-categories: ["package", "{rlang}", "{cli}"]
+categories: ["draft"]
 image: "friendlyr_hex.png"
 smallimage: '<img src="posts/2025_01_31_friendlyr/friendlyr_small.svg">'
 description: |

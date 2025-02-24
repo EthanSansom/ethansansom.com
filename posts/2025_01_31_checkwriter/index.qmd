@@ -1,7 +1,7 @@
 ---
 title: "checkwriter"
 date: "2025-01-30"
-categories: ["Under Construction", "{rlang}"]
+categories: ["under-construction", "package", "{rlang}"]
 image: "checkwriter_hex.svg"
 smallimage: '<img src="posts/2025_01_31_checkwriter/checkwriter_small.svg">'
 git: "https://github.com/EthanSansom/checkwriter"

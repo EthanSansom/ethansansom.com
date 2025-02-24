@@ -1,7 +1,7 @@
 ---
 title: "typewriter"
 date: "2025-01-30"
-categories: ["Under Construction", "{rlang}"]
+categories: ["under-construction", "package", "{rlang}"]
 image: "typewriter_hex.svg"
 smallimage: '<img src="posts/2025_01_31_typewriter/typewriter_small.svg">'
 git: "https://github.com/EthanSansom/typewriter"
@@ -13,7 +13,7 @@ summary: |
   argument types with ease.
 ---
 
-<br> <!-- TODO: Improve the padding and header of normal posts --->
+<br> 
 
 :::{.callout-note}
 This is a copy of the README for my package {typewriter}, which is currently under
@@ -163,5 +163,5 @@ print(my_sum)
 ## Inspiration
 
 This package was primarily inspired by the [{typed}](https://github.com/moodymudskipper/typed)
-package, which also implements a type system which uses an overloaded `?` operator
-for assigning types.
+package, which implements a type system using an overloaded `?` operator
+for type assignment.
