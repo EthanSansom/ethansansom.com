@@ -1,7 +1,15 @@
+<%
+  <!-- Move "under-construction" items to the end of the listing --->
+  const sorted_items = items.sort((x, y) => {
+    const x_under_constuction = x.categories.includes("under-construction");
+    const y_under_constuction = y.categories.includes("under-construction");
+    return x_under_constuction - y_under_constuction;
+  });
+%>
 
 :::: {.grid .text-center .list}
 
-<% for (const item of items) { %>
+<% for (const item of sorted_items) { %>
 
 :::: {.g-col-12 .g-col-sm-6 .g-col-md-4 <%= metadataAttrs(item) %>}
 
@@ -29,6 +37,9 @@
 
 :::: {.card-text .listing-description}
 <p style="text-align:left;"> <%= item.description %> </p>
+<% if (item.categories && item.categories.includes("under-construction")) { %>
+<p style="text-align:left;">⚠️ In Very Early Development ⚠️</p>
+<% } %>
 :::
 
 :::: {.card-text .listing-link}
