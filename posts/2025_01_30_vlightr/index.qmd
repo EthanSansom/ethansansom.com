@@ -1,7 +1,7 @@
 ---
 title: "vlightr"
 date: "2025-01-30"
-categories: ["package", "{vctrs}"]
+categories: ["featured", "package", "{vctrs}"]
 image: "vlightr_hex.svg"
 smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.svg">'
 git: "https://github.com/EthanSansom/vlightr"
@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
   collapse = FALSE,
   comment = "",
   out.width = "100%",
-  cache = FALSE, # TODO: Set to TRUE once this is done
+  cache = TRUE,
   asciicast_knitr_output = "html"
 )
 
@@ -134,7 +134,7 @@ annotated with clip-art arrows and informative labels such as *this one* or
 ## Squint Along with Me
 
 Play eye-spy and find the problem I've described. Note that `n_children_in_household` is only asked in Surveys 4, 8, and 12, while expense 
-questions are asked in every Survey.
+questions are asked in every other Survey.
 
 ```{asciicast}
 #| label: preview-survey-data
@@ -231,10 +231,10 @@ vec_ptype_abbr.highlight <- function(x, ...) {
 ```
 
 Harnessing the magic of {vctrs}, these twenty-ish lines of code allow us to
-modify the `format()` method of nearly in vector in R^[This comes with the
+modify the `format()` method of nearly any in vector in R^[This comes with the
 minor sacrifice of destroying all non-format-related functionality of the highlighted
 vector.]. Rather than playing Where's Waldo with my boss, this allowed me to 
-quickly `highlight()` any column in a survey dataset.
+quickly `highlight()` any observation in a survey dataset.
 
 ```{asciicast}
 #| label: highlight-demo
@@ -250,11 +250,112 @@ survey_data |>
 ### The {vlightr} Package
 
 The `highlight()` function serves it's purpose admirably, but I couldn't resist
-the urge to slap some sick flame decals on it.
+the urge to slap some sick flame decals on it. The [{vlightr}](https://github.com/EthanSansom/vlightr) package implements a fully featured version of `highlight()` with all the requisite
+bells and whistles.
 
-TODO:
+```{asciicast}
+#| include: false
+rm(highlight)
+library(vlightr)
+options(
+  vlightr.default_test = false,
+  vlightr.default_formatter = cli::col_yellow
+)
+```
 
-- Show off the new `vlightr::highlight()` function
-- Return back to the survey example at the end and introduce templight
-- This isn't meant to be a full demo, just some fun frills. Mention Danielle Navaro's start-up page
-- Point the reader towards the {vlightr} website and github for further reading
+```{asciicast}
+#| label: vlightr-demo
+# devtools::install_github("EthanSansom/vlightr")
+library(vlightr)
+
+# Highlight numbers greater than 5
+highlighted <- highlight(c(9, 0, -1), .t = ~ .x > 5, .f = color("violet"))
+print(highlighted)
+```
+
+The `vlightr::highlight()` takes a vector as it's first argument, a
+vectorized^[{vlightr} stands for "vector-highlighter", so instead of supplying a
+predicate `.p`, as in `purrr::map_if()`, we provide a test `.t`.] test function
+or lambda `.t` as it's second, and a formatter function `.f` as it's third. Unlike 
+the \<highlight\> of my youth, you can actually do things with a \<vlightr_highlight\>.
+
+```{asciicast}
+sort(c(highlighted, hl(2:8))) # `hl()` is short for `highlight()`
+```
+
+Variants `highlight_mult()` and `highlight_case()` provide a `switch()` or `dplyr::case_when()` style interface for supplying multiple conditional formats.
+
+```{asciicast}
+indicator <- highlight_case(
+  c(0, 1, NA, 9),
+  0 ~ label("No"),
+  1 ~ label("Yes"),
+  is.na ~ color("red"),
+  true ~ cli::style_bold(paste(.x, "[?]"))
+)
+print(indicator)
+```
+
+The left-hand-side argument of each formula `~` may be a function or a syntactic 
+literal^[Literals are more-or-less the set of symbols used for creating scalar atomic 
+vectors, e.g. `FALSE`, `NA_real_`, `"Hello"`, `12L`.] to match and the right-hand-side 
+a formatter function. `true()` here is a function which always returns `TRUE`^[I'm hoping
+to capitalize on the muscle memory developed from using this default argument pattern: `dplyr::case_when(if_this ~ that, TRUE ~ default)`.].
+
+{vlightr} also comes with a handful of generator functions to help quickly style text.
+
+```{asciicast}
+labelled <- label("A label")
+missing <- color("red")
+important <- style("bold")
+rainbow <- color_rep(c(
+  "red", "orange", "gold", "green", "blue", "purple", "violet"
+))
+
+highlight_case(
+  c("Label", "Where?", "Ah!", "Imagination"),
+  "Label" ~ labelled,
+  "Where?" ~ missing,
+  "Ah!" ~ important,
+  "Imagination" ~ rainbow
+) |> print(width = 10)
+```
+
+I'll admit that `color_rep()` does not a critical data-analysis tool make, but after seeing Danielle Navarro's [R startup message](https://blog.djnavarro.net/posts/2023-06-14_ansi-tricks/) I was determined to support rainbow-styled text.
+
+Since {vlightr} will most likely be used for quick data-exploration, I've added 
+shorthand versions,  `hl()`, `hl_mult()`, and `hl_case()`, of `highlight()` and
+it's variants. Take care to use these time savings responsibly.
+
+```{asciicast}
+#| output-scroll: false
+library(rlang)
+library(purrr, warn.conflicts = FALSE)
+
+starwars |>
+  mutate(
+    eye_color = hl(
+      .x = eye_color, 
+      .t = true,
+      .f = ~map_chr(.x, \(x) try_fetch(color(x)(x), error = \(cnd) x))
+    ),
+    height = hl_mult(height, .x == max(.x) ~ label("max")),
+    species = hl_case(species, "Human" ~ "💪", "Droid" ~ "🦾")
+  ) |>
+  select(name, height, eye_color, species) |>
+  head(10)
+```
+
+For a more restrained approach, use `templight()`, which implements my original
+idea for highlighting vectors by location.
+
+```{asciicast}
+survey_data |>
+  filter(pid == 5910295) |>
+  mutate(across(everything(), ~templight(.x, grepl("(8|9|12)$", survey))))
+```
+
+### Post-Script
+
+I'm still working on the {vlightr} package [website](https://ethansansom.github.io/vlightr/)
+and adding [{testthat}](https://testthat.r-lib.org/) unit tests in preparation for a CRAN submission later this year.
