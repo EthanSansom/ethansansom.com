@@ -27,9 +27,7 @@ posts_directory <- here::here("posts")
 posts_folders_relative_paths <- file.path("posts", dir(posts_directory))
 posts_paths <- here::here(posts_directory, dir(posts_directory), "index.qmd")
 
-# TODO: This needs to be adjusted to not be local host
-local_host <- "7290"
-href_posts_root <- paste0("http://localhost:", local_host, "/")
+href_posts_root <- "https://ethansansom.com/"
 
 # Parse the YAML frontmatter of a post at `path` and return a data.frame.
 # Attempts to parse only up to line `n` (default `n = 25` should be sufficient).
@@ -124,10 +122,11 @@ popup_contract_duration = 300;
 
 // Which post categories to include and how many posts to plot at a time?
 post_category_options = [
+  "featured",
   "package",
   "{rlang}",
-  "data-analysis",
-  "C++",
+  "d3",
+  "c++",
   "no-category" // TODO: Remove, for testing
 ];
 default_post_category_option = post_category_options[0];
