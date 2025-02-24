@@ -1,11 +1,15 @@
 ---
 title: "Data You Can Punch"
 date: "2025-02-12"
-categories: ["D3", "Data Visualization"]
-# image: "vlightr_hex.png"
-# smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.png">'
+categories: ["featured", "d3", "data-viz"]
+# image: ""
+smallimage: '<img src="posts/2025_02_13_data_you_can_punch/data_you_can_punch_small.svg">'
+description: |
+  Have you been hurt by bad data? Do you want to hurt it back? With a little D3.js 
+  and Matter.js, now you can!
 summary: |
-  Data you can punch.
+  Have you been hurt by bad data? Do you want to hurt it back? With a little D3.js 
+  and Matter.js, now you can!
 editor: 
   markdown: 
     wrap: 72
@@ -21,7 +25,7 @@ result turned out insignificant?
 This is a plot for anyone who's ever been hurt by bad data. Grab the "fist"
 below and vent your frustration.
 
-:::: {style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1em;"}
+:::: {style="padding-bottom: 1em;"}
 
 :::: {#plot-title}
 ::::
@@ -55,12 +59,12 @@ Composite = Matter.Composite
 is_mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // Dimensions of the SVG viewbox and margins, defines our world-space
-width = is_mobile ? 400 : 800;
-height = 400;
+width = is_mobile ? (screen.width * 0.9) : 800;
+height = is_mobile ? (screen.width * 0.9) : 400;
 stroke_width = 1;
 
 margin_left = 10;
-margin_right = 100; // Leave room for the "fist"
+margin_right = is_mobile ? 80 : 100; // Leave room for the "fist"
 margin_top = 10;
 margin_bottom = 10;
 
@@ -82,7 +86,7 @@ duration_bar_fade_out = 1000;
 // TODO: Make this a little more robust!
 // 
 // Generate 20 years of random data, ending last year
-num_years = is_mobile ? 10 : 20;
+num_years = is_mobile ? 7 : 20;
 scale = is_mobile ? 5 : 10;
 offsets = d3.shuffle(d3.range(-10, 10)).slice(0, num_years);
 this_year = new Date().getFullYear();
@@ -120,16 +124,18 @@ d3.select("#title-block-header")
   .style("position", "relative")
   .style("z-index", -1);
 
+// If we set the z-index of the footer, we won't be able to click the GitHub link 
+// icons. Setting the background transparent instead. This means that the icons 
+// will appear on top of SVG elements (e.g. the "fist") as they fall, but we 
+// still preserve the effect of "falling off the screen"
 d3.select(".nav-footer")
-  .style("position", "relative")
-  .style("z-index", -1);
+  .style("background", "rgba(0, 0, 0, 0)");
 
 // Set the plot title
 plot_title = d3.select("#plot-title")
   .append("h3")
   .text("Simulated Data")
   .style("opacity", 1)
-  .style("padding-bottom", "0.5em")
   .style("position", "relative")
   .style("z-index", -1)
   // Prevent the cursor from highlighting text, this happens a lot while
@@ -214,7 +220,7 @@ svg.append("g")
   .call(g => g.selectAll("line").attr("stroke-width", stroke_width))
   .call(g => g.append("text")
     .attr("x", -margin_left)
-    .attr("y", d3.min(y_axis.range()) - 10)
+    .attr("y", d3.min(y_axis.range()) - (is_mobile ? 15 : 10))
     .attr("fill", "currentColor")
     .attr("text-anchor", "middle")
     .text("↑ Value")
@@ -360,8 +366,8 @@ create_fist = function(first = false) {
   const fist = Bodies.polygon(
     width - (margin_right / 2), // Placed in the middle of the right margin
     fist_y,
-    fist_radius,
     50, // 50 sided
+    fist_radius,
     {
       collisionFilter: {
         category: collision_fist,
