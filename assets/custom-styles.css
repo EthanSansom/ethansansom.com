@@ -74,7 +74,7 @@ footer.footer .nav-footer {
 /* Switches hamburger menu from being on the left to the right */
 @media (max-width: 991px) {
   .navbar-container.container-fluid {
-    flex-direction: row-reverse;/
+    flex-direction: row-reverse;
     -webkit-flex-direction: row-reverse;
   }
 }
@@ -97,16 +97,6 @@ footer.footer .nav-footer {
 
 .quarto-title {
   margin: 0px 0px;
-}
-
-pre, span, a, p, code, pre.sourceCode {
-  font-weight: var(--weightregular);
-  font-size: clamp(0.5rem, 3vw, 1rem);
-}
-
-.sourceCode {
-  font-weight: var(--weightregular);
-  font-size: clamp(0.5rem, 3vw, 1rem);
 }
 
 .big-title {

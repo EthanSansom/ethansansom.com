@@ -15,6 +15,7 @@ $weightregular: 400;
 $offblack: #1E1E1E;
 $offwhite: #FFFBFC;
 $lightblue: #96BFE3;
+$code-color: #689d6a; // Matches the color of syntax highlighted code chunks
 
 // navbar
 $navbar-bg: $offwhite; // navbar
@@ -94,9 +95,9 @@ a.mono-link:hover {
 
 /* <code> --------------------------------------------------------------------*/
 
-/* TODO: Think about code styling */
-
-/* code { color: $lightblue; } */
+code { 
+  color: $code-color;
+}
 
 /* D3 Plot Elements ----------------------------------------------------------*/
 

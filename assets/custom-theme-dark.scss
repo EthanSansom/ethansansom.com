@@ -2,7 +2,6 @@
 
 // Import fonts
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
 
 // FLAG: Importing Oswald only for testing, since it's very distinct
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
@@ -12,10 +11,12 @@ $weightbold: 700;
 $weightsemibold: 500;
 $weightregular: 400;
 
-// Define colors (dark-mode just inverts offblack and offwhite)
+// Define colors
 $offblack: #FFFBFC;
 $offwhite: #1E1E1E;
 $lightblue: #96BFE3;
+$code-color: #689d6a; // Matches the color of syntax highlighted code chunks
+$code-bg: #343434;    // Matches the color of code chunk background
 
 // navbar
 $navbar-bg: $offwhite; // navbar
@@ -93,11 +94,21 @@ a.mono-link:hover {
   color: $lightblue;
 }
 
-/* <code> --------------------------------------------------------------------*/
+/* Misc ----------------------------------------------------------------------*/
 
-/* TODO: Think about code styling */
+code { 
+  color: $code-color;
+}
 
-/* code { color: $lightblue; } */
+p code:not(.sourceCode), li code:not(.sourceCode), td code:not(.sourceCode) {
+  background-color: $code-bg;
+  padding: .2em;
+}
+
+// For some reason block quotes are pink in darkmode
+.blockquote {
+  color: $offblack;
+}
 
 /* D3 Plot Elements ----------------------------------------------------------*/
 
