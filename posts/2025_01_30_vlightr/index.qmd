@@ -298,7 +298,7 @@ print(indicator)
 
 The left-hand-side argument of each formula `~` may be a function or a syntactic 
 literal^[Literals are more-or-less the set of symbols used for creating scalar atomic 
-vectors, e.g. `FALSE`, `NA_real_`, `"Hello"`, `12L`.] to match and the right-hand-side 
+vectors, e.g. `FALSE`, `NA_real_`, `"Hello"`, `12L`.] and the right-hand-side 
 a formatter function. `true()` here is a function which always returns `TRUE`^[I'm hoping
 to capitalize on the muscle memory developed from using this default argument pattern: `dplyr::case_when(if_this ~ that, TRUE ~ default)`.].
 

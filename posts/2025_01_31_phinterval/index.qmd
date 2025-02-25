@@ -37,7 +37,7 @@ with_tz(ymd_hms("2012-03-26 10:10:00", tz = "UTC"), "EST")
 ```
 
 There is, however, one family of problems that {lubridate} does not like. Problems 
-with holes. Consider `work` and `lunch`, which measure the time-spans I spend at 
+with holes. Consider `work` and `lunch`, which measure the time-spans I spent at 
 work and on a lunch break on January 3rd 2025.
 
 ```{r work-day}
@@ -47,7 +47,7 @@ lunch <- interval("2025-01-03 12:00:00", "2025-01-03 13:00:00")
 
 What I'd like to analyze is the time that I was *actually* doing work, excluding
 my lunch break. My first instinct is to punch a hole through my `work` day using
-`setdiff()` to remove the time I spend at `lunch`. Unfortunately for me, this
+`setdiff()` to remove the time I spent at `lunch`. Unfortunately for me, this
 isn't going to work.
 
 ```{r hole-punch-int}
@@ -465,7 +465,7 @@ employment |>
 
 Unfortunately, while all of the code in this demo works,
 {phinterval} is still a prototype. Because of it's non-standard data-structure,
-we can't use just use fast vectorized operators or primitive functions when 
+we can't just use fast vectorized operators or primitive functions when 
 manipulating a \<phinterval\>'s data. Looking at the [source code](https://github.com/EthanSansom/phinterval/blob/main/R/phinterval.R) for
 the \<phinterval\> class you'll see a liberal use of `map()`, a wrapper around
 `base::lapply()`.
