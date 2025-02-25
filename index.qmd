@@ -27,7 +27,8 @@ posts_directory <- here::here("posts")
 posts_folders_relative_paths <- file.path("posts", dir(posts_directory))
 posts_paths <- here::here(posts_directory, dir(posts_directory), "index.qmd")
 
-href_posts_root <- "https://ethansansom.com/"
+# TODO: Change to .com once you get the DNS working
+href_posts_root <- "https://ethansansom.netlify.app/"
 
 # Parse the YAML frontmatter of a post at `path` and return a data.frame.
 # Attempts to parse only up to line `n` (default `n = 25` should be sufficient).
