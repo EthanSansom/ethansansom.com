@@ -18,3 +18,16 @@ listing:
 ---
 
 <div class = "big-title">Posts</div>
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// _quarto.yml setting "link-external-newwindow: true" is opening
+// posts in new tab (by setting <a> attr to `target = "_blank"`).
+// This resets them to open in the current tab.
+d3 = require("d3")
+d3.select("#listing-listing")
+  .selectAll("a")
+  .attr("target", null)
+```
