@@ -12,7 +12,10 @@ body:
     id: which-page
     attributes:
       label: Which page is the link on?
-      placeholder: E.g. About, Home Page, the Post titled "{vlightr}"
+      description: |
+        Where's the broken link? Please insert a screenshot of the page or 
+        write the page's title.
+      placeholder: E.g. About, Home Page, the post titled "{vlightr}"
     validations:
       required: true
   - type: textarea

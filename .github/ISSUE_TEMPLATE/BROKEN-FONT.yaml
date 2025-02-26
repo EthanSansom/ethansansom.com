@@ -1,0 +1,29 @@
+name: Broken Font Report
+description: Report a broken font
+title: "[Broken Font]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping me clean my internet house! If you've spotted a serif
+        where there should be a sans-serif or a font that looks suspiciouly out
+        of place, this is the place to report it.
+  - type: textarea
+    id: which-page
+    attributes:
+      label: Which page has a broken font?
+      description: |
+        Please insert a screenshot of the page or write it's title.
+    validations:
+      required: true
+- type: dropdown
+  attributes:
+    label: Mobile
+    description: Are you on mobile?
+    multiple: false
+    options:
+      - No
+      - Yes
+    default: 0
+  validations:
+    required: true
