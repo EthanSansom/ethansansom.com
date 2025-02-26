@@ -25,6 +25,6 @@ body:
       options:
         - "No"
         - "Yes"
-      default: 0
+      default: "No"
     validations:
       required: true
