@@ -4,7 +4,7 @@ page-layout: custom
 css: "assets/packages-styles.css"
 listing:
   id: listing-packages
-  template: packages.ejs
+  template: assets/packages.ejs
   contents: posts
   include:
     categories: "package"
