@@ -16,15 +16,15 @@ body:
         Please insert a screenshot of the page or write it's title.
     validations:
       required: true
-- type: dropdown
-  id: on-mobile
-  attributes:
-    label: Mobile
-    description: Are you on mobile?
-    multiple: false
-    options:
-      - No
-      - Yes
-    default: 0
-  validations:
-    required: true
+  - type: dropdown
+    id: on-mobile
+    attributes:
+      label: Mobile
+      description: Are you on mobile?
+      multiple: false
+      options:
+        - No
+        - Yes
+      default: 0
+    validations:
+      required: true
