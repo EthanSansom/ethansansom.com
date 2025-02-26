@@ -7,6 +7,31 @@
   --weightextrabold: 900;
 }
 
+/* Font Sizing ---------------------------------------------------------------*/
+
+#title-block-header {
+  margin: 0px 0px;
+}
+
+.quarto-title {
+  margin: 0px 0px;
+}
+
+.big-title {
+  font-weight: var(--weightextrabold);
+  font-size: clamp(3rem, 18vw, 8rem);
+}
+
+h1 {
+  font-weight: var(--weightextrabold);
+  font-size: clamp(3rem, 9vw, 4rem);
+}
+
+h3 {
+  font-size: clamp(1rem, 4vw, 1.5rem);
+  font-weight: var(--weightbold);
+}
+
 /* Navbar and Custom Layout --------------------------------------------------*/
 
 .page-layout-custom {
@@ -87,29 +112,4 @@ footer.footer .nav-footer {
 /* Center aligns the darkmode toggle with the menu text */
 .bi::before {
   vertical-align: -.3em;
-}
-
-/* Font Sizing ---------------------------------------------------------------*/
-
-#title-block-header {
-  margin: 0px 0px;
-}
-
-.quarto-title {
-  margin: 0px 0px;
-}
-
-.big-title {
-  font-weight: var(--weightextrabold);
-  font-size: clamp(3rem, 18vw, 8rem);
-}
-
-h1 {
-  font-weight: var(--weightextrabold);
-  font-size: clamp(3rem, 9vw, 4rem);
-}
-
-h3 {
-  font-size: clamp(1rem, 4vw, 1.5rem);
-  font-weight: var(--weightbold);
 }

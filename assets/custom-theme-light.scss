@@ -1,7 +1,10 @@
 /*-- scss:defaults --*/
 
-// Import fonts
+// Main Sans-Serif
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+// Main Monospace
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap');
 
 // FLAG: Importing Oswald only for testing, since it's very distinct
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
@@ -97,6 +100,13 @@ a.mono-link:hover {
 
 code { 
   color: $code-color;
+}
+
+p code:not(.sourceCode), li code:not(.sourceCode), td code:not(.sourceCode) {
+  padding-left: 0.2em;
+  padding-right: 0.2em;
+  padding-bottom: 0.075em;
+  padding-top: 0.075em;
 }
 
 /* D3 Plot Elements ----------------------------------------------------------*/
