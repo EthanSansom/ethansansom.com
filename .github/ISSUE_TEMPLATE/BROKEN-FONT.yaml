@@ -23,8 +23,8 @@ body:
       description: Are you on mobile?
       multiple: false
       options:
-        - No
-        - Yes
+        - "No"
+        - "Yes"
       default: 0
     validations:
       required: true
