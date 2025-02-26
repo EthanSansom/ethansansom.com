@@ -1,0 +1,25 @@
+name: Broken Link Report
+description: Report a broken link
+title: "[Broken Link]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping me clean my internet house! If you clicked an underlined
+        word on my website and it didn't do anything, then this is the place to
+        report it.
+  - type: textarea
+    id: which-page
+    attributes:
+      label: Which page is the link on?
+      placeholder: E.g. About, Home Page, the Post titled "{vlightr}"
+    validations:
+      required: true
+  - type: textarea
+    id: which-link
+    attributes:
+      label: Which link is it?
+      description: |
+        Please copy and paste the text of the broken link.
+    validations:
+      required: true
