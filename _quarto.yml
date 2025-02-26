@@ -5,6 +5,9 @@ website:
   title: "Ethan Sansom"
   search: false
   navbar:
+    tools:
+      - icon: file-earmark-person
+        href: resources/ethan_sansom_cv.pdf
     right:
       - href: about.qmd
         text: About
@@ -14,6 +17,9 @@ website:
         text: Packages
   page-footer:
     left: "© 2025 Ethan Sansom"
+    center: 
+      - text: "Report a Bug"
+        href: "https://github.com/EthanSansom/ethansansom.com/issues"
     # Quarto uses bootstrap icons: https://icons.getbootstrap.com/?q=code
     right:
     - icon: github
@@ -34,5 +40,8 @@ format:
     smooth-scroll: true
     link-external-newwindow: true
     highlight-style: gruvbox # TODO: Customize
+
+exectute:
+  freeze: true
 
 editor: source
