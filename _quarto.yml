@@ -3,11 +3,9 @@ project:
 
 website:
   title: "Ethan Sansom"
+  favicon: assets/favicon.png
   search: false
   navbar:
-    tools:
-      - icon: file-earmark-person
-        href: resources/ethan_sansom_cv.pdf
     right:
       - href: about.qmd
         text: About
