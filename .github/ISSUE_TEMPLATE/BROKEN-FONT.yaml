@@ -17,6 +17,7 @@ body:
     validations:
       required: true
 - type: dropdown
+  id: on-mobile
   attributes:
     label: Mobile
     description: Are you on mobile?
