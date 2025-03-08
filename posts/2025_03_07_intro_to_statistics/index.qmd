@@ -1,0 +1,341 @@
+---
+title: "Intro to Probability Distributions"
+date: "2025-01-30"
+categories: ["featured", "data-analysis", "draft"]
+css: "styles.css" # Ahhh! It reads the CSS relative to the local directory
+# image: "vlightr_hex.svg"
+# smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.svg">'
+description: |
+  I don't have a description yet.
+summary: |
+  I don't have a description yet.
+editor: 
+  markdown: 
+    wrap: 72
+knitr:
+  opts_chunk:
+    dev: svg
+    dev.args: { bg: "transparent" }
+    echo: false
+    warning: false
+---
+
+<br>
+
+```{r}
+#| label: setup
+#| include: false
+
+# TODO: YESSS!
+# ggplot light and darkmode in Quarto: 
+# https://mickael.canouil.fr/posts/2023-05-30-quarto-light-dark/
+
+# Setting the background to transparent on ggplot chunks:
+# https://github.com/quarto-dev/quarto-cli/discussions/3385
+
+# TODO: 
+# - Set the limits so that every plot is in the same dimensions
+# - Make the `distribution_theme()` into a more robust theme and put the scales
+#   into a function as well
+# - Make sure to set up ggplot light and dark mode, save this in a Quarto R toolbox
+#   that you can source across scripts (make a JS toolbox as well)
+# - Remember, the actual tree heights you want to simulate are 100 of each kind,
+#   you do 1 million for the plots only so you can have big smoothness factor
+
+# TODO: After fine-tuning the distribution plots (ditch the axes for the small ones)
+# you should set up the D3 tree grow/shrink with the individual buttons.
+# - Add a few stats in text for each one, like X% of trees are smaller than 10 meters,
+#   X% are taller than 50 meters, etc.
+
+library(tibble)
+library(dplyr)
+library(rlang)
+library(purrr)
+library(ggplot2)
+library(scales)
+library(showtext)
+
+set.seed(123)
+
+font_add_google(name = "Inter")
+font_add_google(name = "Oswald") # TODO: Remove, just for testing
+showtext_auto()
+
+# Plotting constants for distribution plots
+GREEN <- "#59B85E"
+PLOT_OPTS <- list(
+  adjust = 3,
+  fill = GREEN,
+  color = GREEN,
+  alpha = 1,
+  linewidth = 2,
+  lineend = "round"
+)
+
+# Helpers
+range <- function(x) max(x, na.rm = TRUE) - min(x, na.rm = TRUE)
+max_density <- function(x) max(density(x)$y)
+
+coord_square <- function(x, y) {
+  x_range <- max(x, na.rm = TRUE) - min(x, na.rm = TRUE)
+  y_range <- max(y, na.rm = TRUE) - min(y, na.rm = TRUE)
+  coord_fixed(ratio = y_range / x_range)
+}
+```
+
+```{r}
+#| label: simulate-distributions
+#| include: false
+
+N_TREES <- 1000 * 1000
+MEAN_HEIGHT <- 25
+small_mean <- MEAN_HEIGHT / 2
+big_mean <- MEAN_HEIGHT * 2
+
+smaller_trees <- rgamma(n = N_TREES, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+larger_trees <- -smaller_trees + max(smaller_trees)
+normal_trees <- rnorm(n = N_TREES, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6)
+# uniform_trees <- runif(n = N_TREES, min = 0, max = MEAN_HEIGHT * 2)
+# point_trees <- rep(MEAN_HEIGHT, times = N_TREES)
+bimodal_trees <- c(
+  rnorm(n = N_TREES / 2, mean = small_mean, sd = MEAN_HEIGHT / 8),
+  rnorm(n = N_TREES / 2, mean = big_mean, sd = MEAN_HEIGHT / 8)
+)
+```
+
+::::::: {.side-by-side-grid}
+
+:::::Container
+
+```{=html}
+<p style = "font-weight: 400; opacity: 0.6;">Select Density ↓</p>
+```
+
+<!-- Tree Distribution Plots Start --->
+
+::::: {.densities-grid}
+
+::: {#small-trees .density-container}
+```{r}
+#| label: small-trees-plot
+#| fig-asp: 1
+ggplot() + 
+  inject(geom_density(aes(x = smaller_trees), !!!PLOT_OPTS)) +
+  theme_void() +
+  # theme(panel.background = element_rect(fill = "red")) +
+  coord_fixed(ratio = range(smaller_trees) / max_density(smaller_trees))
+```
+:::
+
+::: {#large-trees .density-container}
+```{r}
+#| label: large-trees-plot
+#| fig-asp: 1
+ggplot() + 
+  inject(geom_density(aes(x = larger_trees), !!!PLOT_OPTS)) +
+  theme_void() +
+  # theme(panel.background = element_rect(fill = "red")) +
+  coord_fixed(ratio = range(larger_trees) / max_density(larger_trees))
+```
+:::
+
+::: {#uniform-trees .density-container}
+```{r}
+#| label: uniform-trees-plot
+#| fig-asp: 1
+
+unif_height <- 1 / (MEAN_HEIGHT * 2)
+plot_height <- unif_height * 2
+
+ggplot() + 
+  inject(geom_rect(
+    aes(xmin = 0, xmax = MEAN_HEIGHT * 2, ymin = 0, ymax = unif_height),
+    fill = PLOT_OPTS$color,
+    alpha = PLOT_OPTS$alpha
+  )) +
+  geom_segment(
+    aes(x = 0, xend = MEAN_HEIGHT * 2, y = unif_height, yend = unif_height),
+    color = PLOT_OPTS$color,
+    linewidth = PLOT_OPTS$linewidth,
+    lineend = PLOT_OPTS$lineend
+  ) +
+  scale_y_continuous(limits = c(0, plot_height)) +
+  theme_void() +
+  # theme(panel.background = element_rect(fill = "red")) +
+  coord_fixed(ratio = (MEAN_HEIGHT * 2) / (plot_height))
+```
+:::
+
+::: {#point-trees .density-container}
+```{r}
+#| label: point-trees-plot
+#| fig-asp: 1
+ggplot() +
+  inject(geom_segment(
+    aes(x = MEAN_HEIGHT, xend = MEAN_HEIGHT, y = 0, yend = 1),
+    !!!discard_at(PLOT_OPTS, names(PLOT_OPTS) == "linewidth"),
+    linewidth = PLOT_OPTS$linewidth * 2
+  )) +
+  geom_point(
+    aes(x = MEAN_HEIGHT, y = 1),
+    color = PLOT_OPTS$color,
+    size = PLOT_OPTS$linewidth * 1.8
+  ) +
+  scale_x_continuous(limits = c(0, MEAN_HEIGHT * 2)) +
+  theme_void() +
+  # theme(panel.background = element_rect(fill = "red")) +
+  coord_fixed(ratio = (MEAN_HEIGHT * 2) / 1)
+```
+:::
+
+::: {#normal-trees .density-container}
+```{r}
+#| label: normal-trees-plot
+#| fig-asp: 1
+ggplot() + 
+  inject(geom_density(aes(x = normal_trees), !!!PLOT_OPTS)) +
+  theme_void() +
+  # theme(panel.background = element_rect(fill = "red")) +
+  coord_fixed(ratio = range(normal_trees) / max_density(normal_trees))
+```
+:::
+
+::: {#bimodal-trees .density-container}
+```{r}
+#| label: bimodal-trees-plot
+#| fig-asp: 1
+ggplot() + 
+  inject(geom_density(aes(x = bimodal_trees), !!!PLOT_OPTS)) +
+  theme_void() +
+  # theme(panel.background = element_rect(fill = "red")) +
+  # HACK: For some reason this doesn't work ONLY with the bimodal distribution.
+  # Recall the goal here is to set the aspect ratio such that the plot is a
+  # perfect square. I'm adding a manual `1.35` magic number, based on eye-balling
+  # that this is square.
+  coord_fixed(ratio = 1.35 * range(bimodal_trees) / max_density(bimodal_trees))
+```
+:::
+
+:::::
+
+<!-- Tree Distribution Plots End --->
+
+:::::
+
+::::: {.density-forest-container}
+
+```{=html}
+<p id = "forest-title" style = "font-weight: 400; opacity: 0.6;">Most Trees are Tall</p>
+<!-- <p id = "forest-description">A description of the forest that you see.</p> --->
+<div id = "forest-container"></div>
+```
+
+:::::
+
+:::::::
+
+```{ojs}
+//| echo: false
+//| output: false
+
+d3 = require("d3");
+
+svg = d3.select("#forest-container")
+  .append("svg")
+  .attr("viewBox", [0, 0, 400, 200])
+  .attr("style", "max-width: 100%; height: auto;")
+  .attr("overflow", "visible");
+
+svg
+  .append("text")
+  .text("🌲".repeat(10))
+  .style("font-size", 40)
+  .style("letter-spacing", "-5px")
+  .attr("x", 0)
+  .attr("y", 35)
+```
+
+
+<br>
+
+This is a separation between the micro-tree-plots and the high resolution point distribution plot.
+
+::: {#point-high-res}
+
+```{r}
+
+# TODO: I don't need this yet, but I'm saving here since it implements the correct
+# formatting to match D3 plots
+
+GREEN <- "#38B873"
+PLOT_OPTS <- list(
+  adjust = 3,
+  fill = GREEN,
+  color = GREEN,
+  alpha = 0.5,
+  linewidth = 1,
+  lineend = "round"
+)
+
+distribution_theme <- function(base_size = 11) {
+  theme_classic(base_size = base_size) +
+  theme(
+    text = element_text(family = "Inter"),
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    # axis.line = element_line(),
+    axis.title = element_blank(),
+    axis.text.x = element_text(margin = margin(t = 0))
+  )
+}
+
+# Point
+y_num_breaks <- seq(0, 1, 0.1)
+y_num_breaks_n <- length(y_num_breaks)
+ggplot() +
+  # inject(geom_segment(
+  #   aes(x = MEAN_HEIGHT, xend = MEAN_HEIGHT, y = 0, yend = 1),
+  #   !!!PLOT_OPTS
+  # )) +
+  # geom_point(
+  #   aes(x = MEAN_HEIGHT, y = 1),
+  #   color = PLOT_OPTS$color,
+  #   size = PLOT_OPTS$linewidth * 0.8
+  # ) +
+  inject(geom_density(aes(x = normal_trees), !!!PLOT_OPTS)) +
+  scale_y_continuous(
+    limits = c(0, 1.05), 
+    breaks = c(y_num_breaks, 1.05),
+    labels = c(y_num_breaks, "Density"),
+    expand = expansion(add = c(0, 0))
+  ) +
+  scale_x_continuous(
+    limits = c(0, 50),
+    breaks = seq(0, 50, 5),
+    expand = expansion(add = c(0, 0))
+  ) +
+  distribution_theme() +
+  theme(
+    axis.line = element_line(linewidth = 0.4),
+    axis.ticks = element_line(linewidth = 0.4),
+    axis.text.x = element_text(margin = margin(t = 2.5)),
+    axis.text.y = element_text(
+      face = c(rep("plain", y_num_breaks_n), "bold")
+    ),
+    axis.ticks.y = element_line(color = c(rep("black", y_num_breaks_n), NA)),
+    axis.ticks.length = unit(0.15, "cm"),
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+```
+
+:::
+
+<br>
+
+This is a test of another approach where I allow the distribution to be selected
+from a top-menu, and I show the entire "nice" distribution side by side with the
+trees.
+
+
+
