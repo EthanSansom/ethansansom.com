@@ -23,7 +23,7 @@ knitr:
 <br>
 
 ```{r}
-#| label: setup
+#| label: r-setup
 #| include: false
 
 # TODO: YESSS!
@@ -51,6 +51,9 @@ library(tibble)
 library(dplyr)
 library(rlang)
 library(purrr)
+library(stringr)
+library(tidyr)
+
 library(ggplot2)
 library(scales)
 library(showtext)
@@ -102,6 +105,159 @@ bimodal_trees <- c(
   rnorm(n = N_TREES / 2, mean = big_mean, sd = MEAN_HEIGHT / 8)
 )
 ```
+
+:::::{.column-screen-inset style="padding: 20px;"}
+:::::{.columns}
+
+:::{.column width="50%" style="padding: 10px;"}
+
+```{=html}
+<p id = "plot-title" style = "font-weight: 600;">Normal Distribution Probability Density</p>
+<p id = "plot-subtitle" style = "opacity: 0.6;">
+Trees tend to be an “average” height, with an equal number of smaller and larger 
+trees. Very small and very large trees are rare.
+</p>
+```
+
+```{r}
+
+# TODO: I don't need this yet, but I'm saving here since it implements the correct
+# formatting to match D3 plots
+
+GREEN <- "#38B873"
+PLOT_OPTS <- list(
+  adjust = 3,
+  fill = GREEN,
+  color = GREEN,
+  alpha = 0.5,
+  linewidth = 1,
+  lineend = "round"
+)
+
+distribution_theme <- function(base_size = 11) {
+  theme_classic(base_size = base_size) +
+  theme(
+    text = element_text(family = "Inter"),
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    # axis.line = element_line(),
+    axis.title = element_blank(),
+    axis.text.x = element_text(margin = margin(t = 0))
+  )
+}
+
+# Point
+y_max <- 0.3
+y_num_breaks <- seq(0, y_max, 0.05)
+y_num_breaks_n <- length(y_num_breaks)
+ggplot() +
+  inject(geom_density(aes(x = normal_trees), !!!PLOT_OPTS)) +
+  scale_y_continuous(
+    limits = c(0, y_max + 0.05), 
+    breaks = c(y_num_breaks, y_max + 0.05),
+    labels = c(y_num_breaks, "Density"),
+    expand = expansion(add = c(0, 0))
+  ) +
+  scale_x_continuous(
+    limits = c(0, 50),
+    breaks = seq(0, 50, 5),
+    expand = expansion(add = c(0, 0))
+  ) +
+  distribution_theme() +
+  theme(
+    axis.line = element_line(linewidth = 0.4),
+    axis.ticks = element_line(linewidth = 0.4),
+    axis.text.x = element_text(margin = margin(t = 2.5)),
+    axis.text.y = element_text(
+      face = c(rep("plain", y_num_breaks_n), "bold")
+    ),
+    axis.ticks.y = element_line(color = c(rep("black", y_num_breaks_n), NA)),
+    axis.ticks.length = unit(0.15, "cm"),
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+```
+
+:::
+
+:::{.column width="50%" style="padding: 10px;"}
+```{=html}
+<p id = "plot-title" style = "font-weight: 600;">
+The Forest with Normally Distributed Tree Heights
+</p>
+<p id = "plot-subtitle" style = "opacity: 0.6;">
+This forest contains 15 large trees (those taller than 40 meters). If tree height follows a normal distribution, the probability of a tree being taller than 40 meters is around 15.56%.
+</p>
+```
+
+:::{#forest-container}
+:::
+:::
+
+:::::
+:::::
+
+```{r}
+#| include: false
+
+# TODO: Add random animals to the forest!! Easy change to make in the D3
+
+# Process a .txt "drawing" of the forest where a "T" represents a tree and " "
+# is a gap between trees. Returns a data.frame of x, y coordinates for each tree.
+tree_positions <- readLines("resources/tree_positions.txt")
+tree_positions <- tree_positions |>
+  str_pad(width = max(nchar(tree_positions)), side = "right") |>
+  map(\(line) which(str_split_1(line, "") == "T")) |>
+  enframe(value = "x", name = "y") |>
+  unnest_longer(col = x) |>
+  mutate(
+    id = row_number(),
+    # Index from 0 instead of 1
+    x = x - 1,
+    y = y - 1,
+    # Re-scale
+    x = 95 * x / 12,
+    y = 55 * y / 12,
+    # Apply small perturbations
+    x = x + rnorm(n = n(), sd = 1)
+  )
+
+ojs_define(tree_positions)
+```
+
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// TODO: Review the D3 update loop! We've got the tree positions, we then join
+// the correct distribution's data to them (for the heights) and we'll animate
+// the trees growing / shrinking on update.
+
+d3 = require("d3");
+tree_positions_t = transpose(tree_positions);
+
+forest = d3.select("#forest-container")
+  .append("svg")
+  // The "forest" is a 12 x 12 grid, so this makes placement easier
+  .attr("viewBox", [0, 0, 100, 60])
+  .attr("style", "max-width: 100%; height: auto;")
+  .attr("overflow", "visible");
+
+forest
+  .append("g")
+  .selectAll()
+  .data(tree_positions_t)
+  .join("text")
+  .text("🌲")
+  .style("font-size", 10)
+  .attr("x", d => d.x)
+  .attr("y", d => d.y + 10)
+  
+console.log(tree_positions_t)
+```
+
+<!-- OLD GRID START ---->
 
 ::::::: {.side-by-side-grid}
 
@@ -238,9 +394,7 @@ ggplot() +
 //| echo: false
 //| output: false
 
-d3 = require("d3");
-
-svg = d3.select("#forest-container")
+svg = d3.select("#boop")
   .append("svg")
   .attr("viewBox", [0, 0, 400, 200])
   .attr("style", "max-width: 100%; height: auto;")
