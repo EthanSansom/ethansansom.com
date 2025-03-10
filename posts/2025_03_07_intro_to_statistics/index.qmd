@@ -47,16 +47,16 @@ knitr:
 # - Add a few stats in text for each one, like X% of trees are smaller than 10 meters,
 #   X% are taller than 50 meters, etc.
 
+library(ggplot2)
+library(scales)
+library(showtext)
+
 library(tibble)
 library(dplyr)
 library(rlang)
 library(purrr)
 library(stringr)
 library(tidyr)
-
-library(ggplot2)
-library(scales)
-library(showtext)
 
 set.seed(123)
 
@@ -90,20 +90,118 @@ coord_square <- function(x, y) {
 #| label: simulate-distributions
 #| include: false
 
-N_TREES <- 1000 * 1000
+N_TREES <- 100
 MEAN_HEIGHT <- 25
 small_mean <- MEAN_HEIGHT / 2
 big_mean <- MEAN_HEIGHT * 2
 
+# TODO: Change all of these to use a set of anchor points, test with normal below
 smaller_trees <- rgamma(n = N_TREES, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
 larger_trees <- -smaller_trees + max(smaller_trees)
-normal_trees <- rnorm(n = N_TREES, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6)
 # uniform_trees <- runif(n = N_TREES, min = 0, max = MEAN_HEIGHT * 2)
 # point_trees <- rep(MEAN_HEIGHT, times = N_TREES)
 bimodal_trees <- c(
   rnorm(n = N_TREES / 2, mean = small_mean, sd = MEAN_HEIGHT / 8),
   rnorm(n = N_TREES / 2, mean = big_mean, sd = MEAN_HEIGHT / 8)
 )
+
+# Nice Anchors for a Density Plot ----------------------------------------------
+
+# NOTE: This *is* a way to get the anchor points to plot a density, but it WON'T
+# work for the D3 plot I want to draw because for that I need all the x-values to
+# stay the same between each density plot and the HEIGHTS (i.e. densities) to change.
+# E.g. What is p(height = 25 meters) if you're normal, uniform, gamma, etc.
+
+# Vector of quantile probabilities, putting more weight on the lower and upper 
+# probabilities to plot nicer tails
+tiny_prob <- 0.001
+tail_prob <- 0.050
+huge_prob <- 0.999
+
+N_MINI <- 25
+N_MIDI <- 50
+N_TAIL <- 50
+
+tiny_quantiles <- seq(0, tiny_prob, length.out = 25)
+huge_quantiles <- seq(huge_prob, 1, length.out = 25)
+
+middle_quantiles <- seq(tail_prob, 1 - tail_prob, length.out = N_MIDI)
+lower_quantiles <- seq(0, tail_prob, length.out = N_TAIL)
+upper_quantiles <- seq(1 - tail_prob, 1, length.out = N_TAIL)
+
+quantiles <- c(
+  tiny_quantiles,
+  lower_quantiles, 
+  middle_quantiles, 
+  upper_quantiles,
+  huge_quantiles
+)
+
+# Normal
+normal_heights <- qnorm(quantiles, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6) |> discard(is.infinite)
+normal_density <- dnorm(normal_heights, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6)
+plot(normal_heights, normal_density, type = "l")
+
+# Gamma
+gamma_heights <- qgamma(quantiles, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT)) |> discard(is.infinite)
+gamma_density <- dgamma(gamma_heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+
+gamma_order <- order(gamma_heights)
+gamma_heights <- gamma_heights[gamma_order]
+gamma_density <- gamma_density[gamma_order]
+
+plot(gamma_heights, gamma_density, type = "l")
+
+# D3 Anchors for Density Plot --------------------------------------------------
+
+heights <- sort(c(
+  seq(0, 2, length.out = 50),
+  seq(2, 68, length.out = 100),
+  MEAN_HEIGHT,
+  seq(68, 70, length.out = 50)
+))
+
+left_gamma <- dgamma(heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+right_gamma <- dgamma(max(heights) - heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+
+# Gamma
+plot(heights, left_gamma, type = "l")
+plot(heights, right_gamma, type = "l")
+
+# Normal
+plot(
+  heights, 
+  dnorm(heights, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6), 
+  type = "l"
+)
+
+# Bimodal
+small_mean <- MEAN_HEIGHT / 2
+big_mean <- MEAN_HEIGHT * 2
+bimodal_density <- c(
+  dnorm(heights[seq(1, length(heights) %/% 2)], mean = small_mean, sd = MEAN_HEIGHT / 8),
+  dnorm(heights[seq(1 + length(heights) %/% 2, length(heights))], mean = big_mean, sd = MEAN_HEIGHT / 8)
+)
+plot(
+  heights, 
+  bimodal_density, 
+  type = "l"
+)
+
+# Point mass
+plot(
+  heights, 
+  if_else(heights == 25, 1, 0), 
+  type = "l"
+)
+
+# Uniform
+plot(
+  heights, 
+  dunif(heights, 0, 70), 
+  type = "l"
+)
+
 ```
 
 :::::{.column-screen-inset style="padding: 20px;"}
