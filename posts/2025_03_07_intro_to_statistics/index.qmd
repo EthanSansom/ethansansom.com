@@ -26,27 +26,6 @@ knitr:
 #| label: r-setup
 #| include: false
 
-# TODO: YESSS!
-# ggplot light and darkmode in Quarto: 
-# https://mickael.canouil.fr/posts/2023-05-30-quarto-light-dark/
-
-# Setting the background to transparent on ggplot chunks:
-# https://github.com/quarto-dev/quarto-cli/discussions/3385
-
-# TODO: 
-# - Set the limits so that every plot is in the same dimensions
-# - Make the `distribution_theme()` into a more robust theme and put the scales
-#   into a function as well
-# - Make sure to set up ggplot light and dark mode, save this in a Quarto R toolbox
-#   that you can source across scripts (make a JS toolbox as well)
-# - Remember, the actual tree heights you want to simulate are 100 of each kind,
-#   you do 1 million for the plots only so you can have big smoothness factor
-
-# TODO: After fine-tuning the distribution plots (ditch the axes for the small ones)
-# you should set up the D3 tree grow/shrink with the individual buttons.
-# - Add a few stats in text for each one, like X% of trees are smaller than 10 meters,
-#   X% are taller than 50 meters, etc.
-
 library(ggplot2)
 library(scales)
 library(showtext)
@@ -60,9 +39,9 @@ library(tidyr)
 
 set.seed(123)
 
-font_add_google(name = "Inter")
-font_add_google(name = "Oswald") # TODO: Remove, just for testing
-showtext_auto()
+# font_add_google(name = "Inter")
+# font_add_google(name = "Oswald") # TODO: Remove, just for testing
+# showtext_auto()
 
 # Plotting constants for distribution plots
 GREEN <- "#59B85E"
@@ -74,228 +53,87 @@ PLOT_OPTS <- list(
   linewidth = 2,
   lineend = "round"
 )
-
-# Helpers
-range <- function(x) max(x, na.rm = TRUE) - min(x, na.rm = TRUE)
-max_density <- function(x) max(density(x)$y)
-
-coord_square <- function(x, y) {
-  x_range <- max(x, na.rm = TRUE) - min(x, na.rm = TRUE)
-  y_range <- max(y, na.rm = TRUE) - min(y, na.rm = TRUE)
-  coord_fixed(ratio = y_range / x_range)
-}
 ```
 
 ```{r}
 #| label: simulate-distributions
 #| include: false
 
-N_TREES <- 100
 MEAN_HEIGHT <- 25
-small_mean <- MEAN_HEIGHT / 2
-big_mean <- MEAN_HEIGHT * 2
+SMALL_MEAN <- MEAN_HEIGHT / 2
+BIG_MEAN <- MEAN_HEIGHT * 2
+N_SAMPLE <- 100
 
-# TODO: Change all of these to use a set of anchor points, test with normal below
-smaller_trees <- rgamma(n = N_TREES, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
-larger_trees <- -smaller_trees + max(smaller_trees)
-# uniform_trees <- runif(n = N_TREES, min = 0, max = MEAN_HEIGHT * 2)
-# point_trees <- rep(MEAN_HEIGHT, times = N_TREES)
-bimodal_trees <- c(
-  rnorm(n = N_TREES / 2, mean = small_mean, sd = MEAN_HEIGHT / 8),
-  rnorm(n = N_TREES / 2, mean = big_mean, sd = MEAN_HEIGHT / 8)
-)
+heights <- round(sort(c(seq(0, 70, length.out = 199), MEAN_HEIGHT)), 4)
+if (any(duplicated(heights))) stop("Generated duplicate tree `heights`.")
 
-# Nice Anchors for a Density Plot ----------------------------------------------
+# Density Anchor Points --------------------------------------------------------
+#
+# For drawing nice density curves we want to calculate the PDF (e.g. f(height)) 
+# for each of the evenly spaced tree `heights`.
 
-# NOTE: This *is* a way to get the anchor points to plot a density, but it WON'T
-# work for the D3 plot I want to draw because for that I need all the x-values to
-# stay the same between each density plot and the HEIGHTS (i.e. densities) to change.
-# E.g. What is p(height = 25 meters) if you're normal, uniform, gamma, etc.
-
-# Vector of quantile probabilities, putting more weight on the lower and upper 
-# probabilities to plot nicer tails
-tiny_prob <- 0.001
-tail_prob <- 0.050
-huge_prob <- 0.999
-
-N_MINI <- 25
-N_MIDI <- 50
-N_TAIL <- 50
-
-tiny_quantiles <- seq(0, tiny_prob, length.out = 25)
-huge_quantiles <- seq(huge_prob, 1, length.out = 25)
-
-middle_quantiles <- seq(tail_prob, 1 - tail_prob, length.out = N_MIDI)
-lower_quantiles <- seq(0, tail_prob, length.out = N_TAIL)
-upper_quantiles <- seq(1 - tail_prob, 1, length.out = N_TAIL)
-
-quantiles <- c(
-  tiny_quantiles,
-  lower_quantiles, 
-  middle_quantiles, 
-  upper_quantiles,
-  huge_quantiles
-)
-
-# Normal
-normal_heights <- qnorm(quantiles, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6) |> discard(is.infinite)
-normal_density <- dnorm(normal_heights, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6)
-plot(normal_heights, normal_density, type = "l")
-
-# Gamma
-gamma_heights <- qgamma(quantiles, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT)) |> discard(is.infinite)
-gamma_density <- dgamma(gamma_heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
-
-gamma_order <- order(gamma_heights)
-gamma_heights <- gamma_heights[gamma_order]
-gamma_density <- gamma_density[gamma_order]
-
-plot(gamma_heights, gamma_density, type = "l")
-
-# D3 Anchors for Density Plot --------------------------------------------------
-
-heights <- sort(c(
-  seq(0, 2, length.out = 50),
-  seq(2, 68, length.out = 100),
-  MEAN_HEIGHT,
-  seq(68, 70, length.out = 50)
-))
-
-left_gamma <- dgamma(heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
-right_gamma <- dgamma(max(heights) - heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
-
-# Gamma
-plot(heights, left_gamma, type = "l")
-plot(heights, right_gamma, type = "l")
-
-# Normal
-plot(
-  heights, 
-  dnorm(heights, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6), 
-  type = "l"
-)
-
-# Bimodal
-small_mean <- MEAN_HEIGHT / 2
-big_mean <- MEAN_HEIGHT * 2
+left_gamma_density <- dgamma(heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+right_gamma_density <- dgamma(max(heights) - heights, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+normal_density <-  dnorm(heights, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6)
+uniform_density <- dunif(heights, 0, 70)
 bimodal_density <- c(
-  dnorm(heights[seq(1, length(heights) %/% 2)], mean = small_mean, sd = MEAN_HEIGHT / 8),
-  dnorm(heights[seq(1 + length(heights) %/% 2, length(heights))], mean = big_mean, sd = MEAN_HEIGHT / 8)
+  dnorm(heights[seq(1, length(heights) %/% 2)], mean = SMALL_MEAN, sd = MEAN_HEIGHT / 8),
+  dnorm(heights[seq(1 + length(heights) %/% 2, length(heights))], mean = BIG_MEAN, sd = MEAN_HEIGHT / 8)
 )
-plot(
-  heights, 
-  bimodal_density, 
-  type = "l"
+# HACK: This should be `heights == 25`, but I'm picking up nearby points as well.
+# Otherwise, the bezier curve generated by `d3.line().curve(d3.curveBasis)` will
+# be much too short (~0.65) instead of hitting 1.0.
+point_density <- if_else(abs(heights - 25) < 0.4, 1, 0)
+
+# plot(heights, left_gamma_density)
+# plot(heights, right_gamma_density)
+# plot(heights, bimodal_density)
+# plot(heights, normal_density)
+# plot(heights, uniform_density)
+# plot(heights, point_density)
+
+# Distribution Samples ---------------------------------------------------------
+#
+# To draw the forest we want a *random* draw of 100 tree heights from each distribution.
+
+left_gamma_sample <- rgamma(n = N_SAMPLE, shape = sqrt(MEAN_HEIGHT), scale = sqrt(MEAN_HEIGHT))
+right_gamma_sample <- max(left_gamma_sample) - left_gamma_sample
+normal_sample <-  rnorm(n = N_SAMPLE, mean = MEAN_HEIGHT, sd = MEAN_HEIGHT / 6)
+uniform_sample <- runif(n = N_SAMPLE, 0, 70)
+bimodal_sample <- c(
+  rnorm(n = N_SAMPLE / 2, mean = SMALL_MEAN, sd = MEAN_HEIGHT / 8),
+  rnorm(n = N_SAMPLE / 2, mean = BIG_MEAN, sd = MEAN_HEIGHT / 8)
 )
+point_sample <- rep(MEAN_HEIGHT, times = N_SAMPLE)
 
-# Point mass
-plot(
-  heights, 
-  if_else(heights == 25, 1, 0), 
-  type = "l"
-)
+# ggplot() + geom_histogram(aes(x = left_gamma_sample))
+# ggplot() + geom_histogram(aes(x = right_gamma_sample))
+# ggplot() + geom_histogram(aes(x = normal_sample))
+# ggplot() + geom_histogram(aes(x = uniform_sample))
+# ggplot() + geom_histogram(aes(x = bimodal_sample))
+# ggplot() + geom_histogram(aes(x = point_sample))
 
-# Uniform
-plot(
-  heights, 
-  dunif(heights, 0, 70), 
-  type = "l"
-)
+# Pass along density, sample, and heights to OJS -------------------------------
 
-```
+ojs_define(heights)
 
-:::::{.column-screen-inset style="padding: 20px;"}
-:::::{.columns}
+ojs_define(uniform_density)
+ojs_define(normal_density)
+ojs_define(left_gamma_density)
+ojs_define(right_gamma_density)
+ojs_define(point_density)
+ojs_define(bimodal_density)
 
-:::{.column width="50%" style="padding: 10px;"}
-
-```{=html}
-<p id = "plot-title" style = "font-weight: 600;">Normal Distribution Probability Density</p>
-<p id = "plot-subtitle" style = "opacity: 0.6;">
-Trees tend to be an “average” height, with an equal number of smaller and larger 
-trees. Very small and very large trees are rare.
-</p>
+ojs_define(uniform_sample)
+ojs_define(normal_sample)
+ojs_define(left_gamma_sample)
+ojs_define(right_gamma_sample)
+ojs_define(point_sample)
+ojs_define(bimodal_sample)
 ```
 
 ```{r}
-
-# TODO: I don't need this yet, but I'm saving here since it implements the correct
-# formatting to match D3 plots
-
-GREEN <- "#38B873"
-PLOT_OPTS <- list(
-  adjust = 3,
-  fill = GREEN,
-  color = GREEN,
-  alpha = 0.5,
-  linewidth = 1,
-  lineend = "round"
-)
-
-distribution_theme <- function(base_size = 11) {
-  theme_classic(base_size = base_size) +
-  theme(
-    text = element_text(family = "Inter"),
-    panel.background = element_blank(),
-    panel.grid = element_blank(),
-    # axis.line = element_line(),
-    axis.title = element_blank(),
-    axis.text.x = element_text(margin = margin(t = 0))
-  )
-}
-
-# Point
-y_max <- 0.3
-y_num_breaks <- seq(0, y_max, 0.05)
-y_num_breaks_n <- length(y_num_breaks)
-ggplot() +
-  inject(geom_density(aes(x = normal_trees), !!!PLOT_OPTS)) +
-  scale_y_continuous(
-    limits = c(0, y_max + 0.05), 
-    breaks = c(y_num_breaks, y_max + 0.05),
-    labels = c(y_num_breaks, "Density"),
-    expand = expansion(add = c(0, 0))
-  ) +
-  scale_x_continuous(
-    limits = c(0, 50),
-    breaks = seq(0, 50, 5),
-    expand = expansion(add = c(0, 0))
-  ) +
-  distribution_theme() +
-  theme(
-    axis.line = element_line(linewidth = 0.4),
-    axis.ticks = element_line(linewidth = 0.4),
-    axis.text.x = element_text(margin = margin(t = 2.5)),
-    axis.text.y = element_text(
-      face = c(rep("plain", y_num_breaks_n), "bold")
-    ),
-    axis.ticks.y = element_line(color = c(rep("black", y_num_breaks_n), NA)),
-    axis.ticks.length = unit(0.15, "cm"),
-    panel.background = element_blank(),
-    plot.background = element_blank()
-  )
-```
-
-:::
-
-:::{.column width="50%" style="padding: 10px;"}
-```{=html}
-<p id = "plot-title" style = "font-weight: 600;">
-The Forest with Normally Distributed Tree Heights
-</p>
-<p id = "plot-subtitle" style = "opacity: 0.6;">
-This forest contains 15 large trees (those taller than 40 meters). If tree height follows a normal distribution, the probability of a tree being taller than 40 meters is around 15.56%.
-</p>
-```
-
-:::{#forest-container}
-:::
-:::
-
-:::::
-:::::
-
-```{r}
+#| label: load-forest
 #| include: false
 
 # TODO: Add random animals to the forest!! Easy change to make in the D3
@@ -309,30 +147,194 @@ tree_positions <- tree_positions |>
   enframe(value = "x", name = "y") |>
   unnest_longer(col = x) |>
   mutate(
-    id = row_number(),
+    # TODO: Delete, I don't think we need an ID
+    # id = row_number(),
+    
+    # TODO: I think it's easiest to re-scale x, y such that every position is
+    # in the range [0, 1] (e.g. divide by the maximum observed grid-space).
+    # x = x / max(x)
+    # y = y / max(y)
+    # In JS we'll apply whatever coordinate transformation that we want.
+    
     # Index from 0 instead of 1
     x = x - 1,
     y = y - 1,
     # Re-scale
     x = 95 * x / 12,
     y = 55 * y / 12,
-    # Apply small perturbations
+    
+    # Apply small horizontal perturbations (NOTE: Keep this with lower SD after scaling to [0, 1])
     x = x + rnorm(n = n(), sd = 1)
   )
+
+if (nrow(tree_positions) != 100) {
+  cli::cli_abort("`tree_positions` must have 100 rows, not {nrow(tree_positions)}.")
+}
 
 ojs_define(tree_positions)
 ```
 
+:::{#density-button-container}
+:::
+
+:::{#density-container}
+:::
+
+:::{#forest-container}
+:::
+
+<!-- CSS for Custom Buttons (TODO: Move elsewhere, maybe website-wide) --->
+
+```{=html}
+<!--
+TODO: You copied this button CSS from here, eventually you should refine it and
+move this to a custom CSS file. Maybe define a few "site-wide" components that
+you like (e.g. info on-hover pop-up, filter-button, slider, text-input, etc.)
+https://getcssscan.com/css-buttons-examples
+--->
+
+<style>
+.button-filter {
+  align-items: center;
+  appearance: none;
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: .375em;
+  box-shadow: none;
+  box-sizing: border-box;
+  color: #363636;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  padding: calc(.5em - 1px) 1em;
+  position: relative;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.button-filter:active {
+  border-color: #4a4a4a;
+  outline: 0;
+}
+
+.button-filter:focus {
+  border-color: #485fc7;
+  outline: 0;
+}
+
+.button-filter:hover {
+  border-color: #b5b5b5;
+}
+
+.button-filter:focus:not(:active) {
+  box-shadow: rgba(72, 95, 199, .25) 0 0 0 .125em;
+}
+</style>
+```
+
+<!-- D3 to Define the Density Plot --->
 
 ```{ojs}
 //| echo: false
 //| output: false
 
-// TODO: Review the D3 update loop! We've got the tree positions, we then join
-// the correct distribution's data to them (for the heights) and we'll animate
-// the trees growing / shrinking on update.
+// NOTE: This plot is based on Yan Holtz's density plot:
+// https://d3-graph-gallery.com/graph/density_basic.html
 
-d3 = require("d3");
+// TODO: Implement CDF plots which show some amount of density between points x_1, x_2.
+// Here's an interactive example based on mouse position:
+// https://gist.github.com/ctufts/a90019910166d8378c6462dfd2f6f3ec
+
+// TODO: Develop your own tooltips for things like an info button (ℹ️) that
+// match Quarto. They use the tippy JS library: https://atomiks.github.io/tippyjs/v6/getting-started/
+// Import this like you did GLightbox in the gallery page, then use it to make
+// custom tooltips.
+
+// TODO: Experiment with arquero, https://idl.uw.edu/arquero/api/
+// See Quarto mention: https://quarto.org/docs/interactive/ojs/libraries.html#arquero
+// Arquero and D3: https://observablehq.com/@uwdata/arquero-and-d3
+
+d3 = require("d3@7");
+import { aq, op } from '@uwdata/arquero';
+
+/* Constants -----------------------------------------------------------------*/
+
+// Observable is picky about object creation, see:
+// https://observablehq.com/documentation/cells/observable-javascript#statements-need-curly-braces-and-return-or-yield
+margin = { return {left: 40, right: 30, top: 30, bottom: 30}; }
+
+plot_width = 500;
+plot_height = 400;
+width = plot_width - margin.left - margin.right;
+height = plot_height - margin.top - margin.bottom;
+
+green = "#59B85E";
+
+/* SVG Initialization --------------------------------------------------------*/
+
+svg = d3.select("#density-container")
+  .append("svg")
+  .attr("viewBox", [0, 0, plot_width, plot_height])
+  .attr("style", "max-width: 100%; height: auto;")
+  // .style("background", "red")
+  // This defines the centered "panel"
+  .append("g")
+  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+/* Axes ----------------------------------------------------------------------*/
+
+// We'll initially plot the normal density
+initial_density = normal_density;
+
+x = d3.scaleLinear()
+  .range([0, width])
+  .domain([0, Math.max(...heights)]);
+
+x_axis = svg.append("g")
+  .attr("transform", "translate(0," + height + ")")
+  .call(d3.axisBottom(x));
+
+y = d3.scaleLinear()
+  .range([height, 0])
+  .domain([0, Math.round(Math.max(...initial_density) * 1.25 * 100) / 100]);
+
+y_axis = svg.append("g").call(d3.axisLeft(y));
+
+/* Curve ---------------------------------------------------------------------*/
+
+// Creates an array of [x, y] pairs. Add [0, 0] and [70, 0] points to all densities.
+density = d3.zip(
+  [0, ...heights, 70], 
+  [0, ...initial_density, 0]
+);
+
+curve = svg
+  .append('g')
+  .append("path")
+  // Note that we use `.datum()` since the path requires *all* of the data-points
+  .datum(density)
+  .attr("fill", green)
+  .attr("fill-opacity", 0.5)
+  .attr("stroke", green)
+  .attr("stroke-width", 2)
+  .attr("stroke-linejoin", "round")
+  .attr("d",  d3.line()
+    .curve(d3.curveBasis)
+      .x(function(d) { return x(d[0]); })
+      .y(function(d) { return y(d[1]); })
+  );
+```
+
+<!-- D3 to Initialize the Forest --->
+
+```{ojs}
+//| echo: false
+//| output: false
+
 tree_positions_t = transpose(tree_positions);
 
 forest = d3.select("#forest-container")
@@ -342,7 +344,7 @@ forest = d3.select("#forest-container")
   .attr("style", "max-width: 100%; height: auto;")
   .attr("overflow", "visible");
 
-forest
+trees = forest
   .append("g")
   .selectAll()
   .data(tree_positions_t)
@@ -351,243 +353,258 @@ forest
   .style("font-size", 10)
   .attr("x", d => d.x)
   .attr("y", d => d.y + 10)
-  
-console.log(tree_positions_t)
 ```
 
-<!-- OLD GRID START ---->
-
-::::::: {.side-by-side-grid}
-
-:::::Container
-
-```{=html}
-<p style = "font-weight: 400; opacity: 0.6;">Select Density ↓</p>
-```
-
-<!-- Tree Distribution Plots Start --->
-
-::::: {.densities-grid}
-
-::: {#small-trees .density-container}
-```{r}
-#| label: small-trees-plot
-#| fig-asp: 1
-ggplot() + 
-  inject(geom_density(aes(x = smaller_trees), !!!PLOT_OPTS)) +
-  theme_void() +
-  # theme(panel.background = element_rect(fill = "red")) +
-  coord_fixed(ratio = range(smaller_trees) / max_density(smaller_trees))
-```
-:::
-
-::: {#large-trees .density-container}
-```{r}
-#| label: large-trees-plot
-#| fig-asp: 1
-ggplot() + 
-  inject(geom_density(aes(x = larger_trees), !!!PLOT_OPTS)) +
-  theme_void() +
-  # theme(panel.background = element_rect(fill = "red")) +
-  coord_fixed(ratio = range(larger_trees) / max_density(larger_trees))
-```
-:::
-
-::: {#uniform-trees .density-container}
-```{r}
-#| label: uniform-trees-plot
-#| fig-asp: 1
-
-unif_height <- 1 / (MEAN_HEIGHT * 2)
-plot_height <- unif_height * 2
-
-ggplot() + 
-  inject(geom_rect(
-    aes(xmin = 0, xmax = MEAN_HEIGHT * 2, ymin = 0, ymax = unif_height),
-    fill = PLOT_OPTS$color,
-    alpha = PLOT_OPTS$alpha
-  )) +
-  geom_segment(
-    aes(x = 0, xend = MEAN_HEIGHT * 2, y = unif_height, yend = unif_height),
-    color = PLOT_OPTS$color,
-    linewidth = PLOT_OPTS$linewidth,
-    lineend = PLOT_OPTS$lineend
-  ) +
-  scale_y_continuous(limits = c(0, plot_height)) +
-  theme_void() +
-  # theme(panel.background = element_rect(fill = "red")) +
-  coord_fixed(ratio = (MEAN_HEIGHT * 2) / (plot_height))
-```
-:::
-
-::: {#point-trees .density-container}
-```{r}
-#| label: point-trees-plot
-#| fig-asp: 1
-ggplot() +
-  inject(geom_segment(
-    aes(x = MEAN_HEIGHT, xend = MEAN_HEIGHT, y = 0, yend = 1),
-    !!!discard_at(PLOT_OPTS, names(PLOT_OPTS) == "linewidth"),
-    linewidth = PLOT_OPTS$linewidth * 2
-  )) +
-  geom_point(
-    aes(x = MEAN_HEIGHT, y = 1),
-    color = PLOT_OPTS$color,
-    size = PLOT_OPTS$linewidth * 1.8
-  ) +
-  scale_x_continuous(limits = c(0, MEAN_HEIGHT * 2)) +
-  theme_void() +
-  # theme(panel.background = element_rect(fill = "red")) +
-  coord_fixed(ratio = (MEAN_HEIGHT * 2) / 1)
-```
-:::
-
-::: {#normal-trees .density-container}
-```{r}
-#| label: normal-trees-plot
-#| fig-asp: 1
-ggplot() + 
-  inject(geom_density(aes(x = normal_trees), !!!PLOT_OPTS)) +
-  theme_void() +
-  # theme(panel.background = element_rect(fill = "red")) +
-  coord_fixed(ratio = range(normal_trees) / max_density(normal_trees))
-```
-:::
-
-::: {#bimodal-trees .density-container}
-```{r}
-#| label: bimodal-trees-plot
-#| fig-asp: 1
-ggplot() + 
-  inject(geom_density(aes(x = bimodal_trees), !!!PLOT_OPTS)) +
-  theme_void() +
-  # theme(panel.background = element_rect(fill = "red")) +
-  # HACK: For some reason this doesn't work ONLY with the bimodal distribution.
-  # Recall the goal here is to set the aspect ratio such that the plot is a
-  # perfect square. I'm adding a manual `1.35` magic number, based on eye-balling
-  # that this is square.
-  coord_fixed(ratio = 1.35 * range(bimodal_trees) / max_density(bimodal_trees))
-```
-:::
-
-:::::
-
-<!-- Tree Distribution Plots End --->
-
-:::::
-
-::::: {.density-forest-container}
-
-```{=html}
-<p id = "forest-title" style = "font-weight: 400; opacity: 0.6;">Most Trees are Tall</p>
-<!-- <p id = "forest-description">A description of the forest that you see.</p> --->
-<div id = "forest-container"></div>
-```
-
-:::::
-
-:::::::
+<!-- D3 to Update the Density Curve and Forest --->
 
 ```{ojs}
 //| echo: false
 //| output: false
 
-svg = d3.select("#boop")
-  .append("svg")
-  .attr("viewBox", [0, 0, 400, 200])
-  .attr("style", "max-width: 100%; height: auto;")
-  .attr("overflow", "visible");
+/* Update Density Curve ------------------------------------------------------*/
 
-svg
-  .append("text")
-  .text("🌲".repeat(10))
-  .style("font-size", 40)
-  .style("letter-spacing", "-5px")
-  .attr("x", 0)
-  .attr("y", 35)
+densities = {
+  return {
+    Normal: normal_density,
+    Uniform: uniform_density,
+    Point: point_density,
+    Gamma: left_gamma_density,
+    "Reverse Gamma": right_gamma_density,
+    Bimodal: bimodal_density
+  }
+};
+
+// https://stats.stackexchange.com/questions/281162/scale-a-number-between-a-range
+rescale = function(x, x_min, x_max, target_min, target_max) {
+  return ((x - x_min) / (x_max - x_min)) * (target_max - target_min) + target_min;
+};
+
+rescale_array = function(array, target_min, target_max) {
+  const array_min = Math.min(...array);
+  const array_max = Math.max(...array);
+  return array.map(x => rescale(x, array_min, array_max, target_min, target_max));
+};
+
+// The normal and the point sample should have the same mean, so I'm just going
+// to set the point sample tree height to that of the mean normal height, since
+// we can't re-scale the point mass (it has min == max).
+scaled_normal_mean = (rescale_array(normal_sample, 5, 15).reduce((a, b) => a + b)) / normal_sample.length;
+scaled_point_sample = point_sample.map(x => scaled_normal_mean);
+
+// We need to re-scale each sample to accommodate a reasonable font size
+samples = {
+  return {
+    Normal: rescale_array(normal_sample, 5, 15),
+    Uniform: rescale_array(uniform_sample, 5, 15),
+    Point: scaled_point_sample,
+    Gamma: rescale_array(left_gamma_sample, 5, 15),
+    "Reverse Gamma": rescale_array(right_gamma_sample, 5, 15),
+    Bimodal: rescale_array(bimodal_sample, 5, 15)
+  }
+};
+
+console.log(samples)
+
+buttons = d3.select("#density-button-container")
+  .style("display", "flex")
+  .style("gap", "10px")
+  .selectAll('density-button')
+  .data(Object.keys(densities))
+  .enter()
+  .append('div')
+  .classed("button-filter", true)
+  .call(div => div.append("p")
+    .style("margin", "0px")
+    .text(function(d) { return d })
+  )
+  // Passes the density key of the inner text element to the density function
+  .on("click", function() { 
+    update(d3.select(this).select("p").text());
+  });
+
+update = function(selected_distribution) {
+  console.log("Update!");
+
+  const current_density = densities[selected_distribution];
+  const current_sample = samples[selected_distribution];
+  
+  // DENSITY PLOT
+  const density = d3.zip(
+    [0, ...heights, 70], 
+    [0, ...current_density, 0]
+  );
+  
+  // Update the y-axis
+  const y = d3.scaleLinear()
+    .range([height, 0])
+    .domain([0, Math.round(Math.max(...current_density) * 1.25 * 100) / 100]);
+
+  // Transition the existing y-axis into the new one
+  y_axis
+    .transition()
+    .duration(1000)
+    .call(d3.axisLeft(y));
+  
+  // Update the "d" (path) attribute of the density curve
+  curve
+    .datum(density)
+    .transition()
+    .duration(1000)
+    .attr("d",  d3.line()
+        .curve(d3.curveBasis)
+        .x(function(d) { return x(d[0]); })
+        .y(function(d) { return y(d[1]); })
+    );
+    
+  // FOREST
+  
+  // Note, `tree_positions_t` is the global dataset of forest x, y coordinates,
+  // we bind the current sample to it
+  const tree_data = tree_positions_t
+    .map((d, i) => ({...d, height: current_sample[i]}));
+
+  // TODO: This is *slow!*, find a way to speed up, maybe with Canvas?
+  // Here's a Canvas x D3 tutorial: 
+  // https://www.freecodecamp.org/news/d3-and-canvas-in-3-steps-8505c8b27444/
+  // Detailed: https://www.datamake.io/blog/d3-canvas-full#manual
+  //
+  // TODO: Get a handle on *responsive* canvas elements (e.g. like SVG viewbox)
+  // See: https://dev.to/georgedoescode/html5-canvas-responsive-2keh
+  //
+  // NOTE: Apparently this is all you need for responsive canvas. Can this be 
+  // applied to "Data You Can Punch"?
+  // canvas {
+  //  width: 100%;
+  //  object-fit: contain;
+  // }
+  // See: https://stackoverflow.com/questions/34772957/how-to-make-canvas-responsive
+  //
+  // TODO: Look into this Matter.js solution:
+  // https://www.youtube.com/watch?v=kdSDTaYY700
+  // Here's another cool tutorial: https://www.youtube.com/watch?v=hZkah1Y85Oc
+  trees
+    .transition()
+    .duration(500)
+    // Note, if you just do `current_sample[i]` D3 doesn't know how to interpolate
+    // from the current pixel value, so you need to manually input "XXpx"
+    .style("font-size", (d, i) => `${current_sample[i]}px`);
+  
+  /*
+  trees
+    .data(tree_data)
+    .transition()
+    .duration(1000)
+    .style("font-size", d => d.height);
+  */
+};
 ```
 
+<!-- D3 to Test Forest Canvas --->
 
-<br>
-
-This is a separation between the micro-tree-plots and the high resolution point distribution plot.
-
-::: {#point-high-res}
-
-```{r}
-
-# TODO: I don't need this yet, but I'm saving here since it implements the correct
-# formatting to match D3 plots
-
-GREEN <- "#38B873"
-PLOT_OPTS <- list(
-  adjust = 3,
-  fill = GREEN,
-  color = GREEN,
-  alpha = 0.5,
-  linewidth = 1,
-  lineend = "round"
-)
-
-distribution_theme <- function(base_size = 11) {
-  theme_classic(base_size = base_size) +
-  theme(
-    text = element_text(family = "Inter"),
-    panel.background = element_blank(),
-    panel.grid = element_blank(),
-    # axis.line = element_line(),
-    axis.title = element_blank(),
-    axis.text.x = element_text(margin = margin(t = 0))
-  )
-}
-
-# Point
-y_num_breaks <- seq(0, 1, 0.1)
-y_num_breaks_n <- length(y_num_breaks)
-ggplot() +
-  # inject(geom_segment(
-  #   aes(x = MEAN_HEIGHT, xend = MEAN_HEIGHT, y = 0, yend = 1),
-  #   !!!PLOT_OPTS
-  # )) +
-  # geom_point(
-  #   aes(x = MEAN_HEIGHT, y = 1),
-  #   color = PLOT_OPTS$color,
-  #   size = PLOT_OPTS$linewidth * 0.8
-  # ) +
-  inject(geom_density(aes(x = normal_trees), !!!PLOT_OPTS)) +
-  scale_y_continuous(
-    limits = c(0, 1.05), 
-    breaks = c(y_num_breaks, 1.05),
-    labels = c(y_num_breaks, "Density"),
-    expand = expansion(add = c(0, 0))
-  ) +
-  scale_x_continuous(
-    limits = c(0, 50),
-    breaks = seq(0, 50, 5),
-    expand = expansion(add = c(0, 0))
-  ) +
-  distribution_theme() +
-  theme(
-    axis.line = element_line(linewidth = 0.4),
-    axis.ticks = element_line(linewidth = 0.4),
-    axis.text.x = element_text(margin = margin(t = 2.5)),
-    axis.text.y = element_text(
-      face = c(rep("plain", y_num_breaks_n), "bold")
-    ),
-    axis.ticks.y = element_line(color = c(rep("black", y_num_breaks_n), NA)),
-    axis.ticks.length = unit(0.15, "cm"),
-    panel.background = element_blank(),
-    plot.background = element_blank()
-  )
-```
-
+:::{#forest-canvas-container}
 :::
 
+```{ojs}
+//| echo: false
+//| output: false
+
+// NOTE: Following this <canvas> x D3 tutorial by Lars Verspohl
+// https://www.datamake.io/blog/d3-canvas-full#manual
+
+// Initializes the <canvas> element (like starting an <svg>)
+canvas = d3.select("#forest-canvas-container").append("canvas");
+
+// The context carries all of the information *about* the <canvas>, i.e. what
+// to draw and where
+context = canvas.node().getContext("2d");
+context.textAlign = "center"; 
+context.textBaseline = "middle";
+
+// NOTE: I'm not 100% on the intricacies of <canvas>, but to prevent blurry
+// drawings you need to adjust the canvas's width and height attribute by a
+// pixel-density scale. Most Stack answers I saw only used a fixed-width canvas,
+// but my test is working with "width: 100%; height: auto;". 
+//
+// This ends up working like <svg> viewbox. The `canvas_width` and `canvas_height` 
+// are the coordinates for our elements. E.g. The code below:
+// `context.fillText("X", canvas_width / 2, canvas_height / 2);`
+// draws an "X" to the center of the canvas.
+//
+// However if you inspect the canvas, it's *actual* width and height attributes
+// are: `canvas_width * scale`, `canvas_height * scale`.
+canvas_width = 1000;
+canvas_height = 500;
+scale = window.devicePixelRatio || 1;
+canvas
+  // Adjust (e.g. upscale) the canvas dimensions by the `scale`
+  .attr("width", canvas_width * scale)
+  .attr("height", canvas_height * scale)
+  // .style("width", `${canvas_width}px`)
+  // .style("height", `${canvas_height}px`);
+  .style("width", "100%")
+  .style("height", "auto")
+
+// Tell the context about our `scale`. This seems to adjust data (e.g. coordinates)
+// given to the context by the appropriate scale.
+context.scale(scale, scale);
+
+// This is the interface through which we use D3. We create an element, which we
+// can data-bind to in the usual way, but we *don't* add it to the DOM. We use
+// this container to *store* the data and use D3 to manipulate entering, exiting,
+// and updating data as usual. We pass this information onto <canvas> for drawing.
+content_container = document.createElement("content");
+
+// Append the trees to the container as you normally would, instead of `.style()`
+// always use attribute, since we're just interested in telling <canvas> what to
+// do.
+content = d3.select(content_container)
+  .selectAll()
+  .data(tree_positions_t)
+  .join("text")
+  .text("🌲")
+  .attr("font-size", 100)
+  .attr("x", d => d.x * 10)
+  .attr("y", d => d.y * 10 + 10);
+
+// console.log(content.nodes());
+
+draw = function() {
+  // Clear the canvas
+  context.clearRect(0, 0, canvas_width, canvas_height);
+  
+  // Render every element to the <canvas>
+  
+  content.each(function(d, i) {
+    const node = d3.select(this);
+    
+    // TODO: Just use the tree emoji directly, since the `.text()` is always the
+    // same. In fact, don't even use `.text("🌲")` in the first place.
+    context.font = `${node.attr("font-size")}px monospace`;
+    context.fillText(node.text(), node.attr("x"), node.attr("y"));
+  });
+  
+  // context.font = "10px monospace";
+  // context.fillText("🌲", canvas_width / 2, canvas_height / 2);
+}
+
+// TODO: I want to move the tree position re-scaling from R into Javascript.
+// Then, I can base it off of the size that we set of <canvas> to. That re-scale
+// range function that I made will actually come in handy here.
+draw();
+```
+
+<!-- Keyboard Keys test! ---->
 <br>
 
-This is a test of another approach where I allow the distribution to be selected
-from a top-menu, and I show the entire "nice" distribution side by side with the
-trees.
+```{=html}
+<!--
+Keyboard key elements! I wonder if we need to switch based on Client OS
+https://developer.mozilla.org/en-US/docs/Web/HTML/Element/kbd
 
+NOTE: This person designed a sick keyboard css theme:
+https://dylanatsmith.com/wrote/styling-the-kbd-element
+--->
 
-
+<kbd>⌘ B</kbd>
+<kbd>⇧⌘ Enter</kbd>
+```
