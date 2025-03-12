@@ -106,6 +106,13 @@ bimodal_sample <- c(
 )
 point_sample <- rep(MEAN_HEIGHT, times = N_SAMPLE)
 
+# Shuffle around the samples so we're not plotting tall-near-tall, short-near-short
+left_gamma_sample <- sample(left_gamma_sample, N_SAMPLE)
+right_gamma_sample <- sample(right_gamma_sample, N_SAMPLE)
+normal_sample <- sample(normal_sample, N_SAMPLE)
+uniform_sample <- sample(uniform_sample, N_SAMPLE)
+bimodal_sample <- sample(bimodal_sample, N_SAMPLE)
+
 # ggplot() + geom_histogram(aes(x = left_gamma_sample))
 # ggplot() + geom_histogram(aes(x = right_gamma_sample))
 # ggplot() + geom_histogram(aes(x = normal_sample))
@@ -147,31 +154,19 @@ tree_positions <- tree_positions |>
   enframe(value = "x", name = "y") |>
   unnest_longer(col = x) |>
   mutate(
-    # TODO: Delete, I don't think we need an ID
-    # id = row_number(),
+    # Apply small horizontal perturbations
+    x = pmax(0, x + rnorm(n = n(), sd = 0.1)),
     
-    # TODO: I think it's easiest to re-scale x, y such that every position is
-    # in the range [0, 1] (e.g. divide by the maximum observed grid-space).
-    # x = x / max(x)
-    # y = y / max(y)
-    # In JS we'll apply whatever coordinate transformation that we want.
-    
-    # Index from 0 instead of 1
-    x = x - 1,
-    y = y - 1,
-    # Re-scale
-    x = 95 * x / 12,
-    y = 55 * y / 12,
-    
-    # Apply small horizontal perturbations (NOTE: Keep this with lower SD after scaling to [0, 1])
-    x = x + rnorm(n = n(), sd = 1)
+    # Scale to be in range [0, 1]
+    x = x / max(x),
+    y = y / max(y)
   )
 
 if (nrow(tree_positions) != 100) {
   cli::cli_abort("`tree_positions` must have 100 rows, not {nrow(tree_positions)}.")
 }
 
-ojs_define(tree_positions)
+ojs_define(tree_positions_raw = tree_positions)
 ```
 
 :::{#density-button-container}
@@ -217,17 +212,22 @@ https://getcssscan.com/css-buttons-examples
 }
 
 .button-filter:active {
-  border-color: #4a4a4a;
+  border-color: #59B85E;
+  outline: 0;
+}
+
+.button-filter.active {
+  border-color: #59B85E;
   outline: 0;
 }
 
 .button-filter:focus {
-  border-color: #485fc7;
+  border-color: #59B85E;
   outline: 0;
 }
 
 .button-filter:hover {
-  border-color: #b5b5b5;
+  border-color: #59B85E;
 }
 
 .button-filter:focus:not(:active) {
@@ -259,7 +259,7 @@ https://getcssscan.com/css-buttons-examples
 // Arquero and D3: https://observablehq.com/@uwdata/arquero-and-d3
 
 d3 = require("d3@7");
-import { aq, op } from '@uwdata/arquero';
+// import { aq, op } from '@uwdata/arquero';
 
 /* Constants -----------------------------------------------------------------*/
 
@@ -331,176 +331,6 @@ curve = svg
 
 <!-- D3 to Initialize the Forest --->
 
-```{ojs}
-//| echo: false
-//| output: false
-
-tree_positions_t = transpose(tree_positions);
-
-forest = d3.select("#forest-container")
-  .append("svg")
-  // The "forest" is a 12 x 12 grid, so this makes placement easier
-  .attr("viewBox", [0, 0, 100, 60])
-  .attr("style", "max-width: 100%; height: auto;")
-  .attr("overflow", "visible");
-
-trees = forest
-  .append("g")
-  .selectAll()
-  .data(tree_positions_t)
-  .join("text")
-  .text("🌲")
-  .style("font-size", 10)
-  .attr("x", d => d.x)
-  .attr("y", d => d.y + 10)
-```
-
-<!-- D3 to Update the Density Curve and Forest --->
-
-```{ojs}
-//| echo: false
-//| output: false
-
-/* Update Density Curve ------------------------------------------------------*/
-
-densities = {
-  return {
-    Normal: normal_density,
-    Uniform: uniform_density,
-    Point: point_density,
-    Gamma: left_gamma_density,
-    "Reverse Gamma": right_gamma_density,
-    Bimodal: bimodal_density
-  }
-};
-
-// https://stats.stackexchange.com/questions/281162/scale-a-number-between-a-range
-rescale = function(x, x_min, x_max, target_min, target_max) {
-  return ((x - x_min) / (x_max - x_min)) * (target_max - target_min) + target_min;
-};
-
-rescale_array = function(array, target_min, target_max) {
-  const array_min = Math.min(...array);
-  const array_max = Math.max(...array);
-  return array.map(x => rescale(x, array_min, array_max, target_min, target_max));
-};
-
-// The normal and the point sample should have the same mean, so I'm just going
-// to set the point sample tree height to that of the mean normal height, since
-// we can't re-scale the point mass (it has min == max).
-scaled_normal_mean = (rescale_array(normal_sample, 5, 15).reduce((a, b) => a + b)) / normal_sample.length;
-scaled_point_sample = point_sample.map(x => scaled_normal_mean);
-
-// We need to re-scale each sample to accommodate a reasonable font size
-samples = {
-  return {
-    Normal: rescale_array(normal_sample, 5, 15),
-    Uniform: rescale_array(uniform_sample, 5, 15),
-    Point: scaled_point_sample,
-    Gamma: rescale_array(left_gamma_sample, 5, 15),
-    "Reverse Gamma": rescale_array(right_gamma_sample, 5, 15),
-    Bimodal: rescale_array(bimodal_sample, 5, 15)
-  }
-};
-
-console.log(samples)
-
-buttons = d3.select("#density-button-container")
-  .style("display", "flex")
-  .style("gap", "10px")
-  .selectAll('density-button')
-  .data(Object.keys(densities))
-  .enter()
-  .append('div')
-  .classed("button-filter", true)
-  .call(div => div.append("p")
-    .style("margin", "0px")
-    .text(function(d) { return d })
-  )
-  // Passes the density key of the inner text element to the density function
-  .on("click", function() { 
-    update(d3.select(this).select("p").text());
-  });
-
-update = function(selected_distribution) {
-  console.log("Update!");
-
-  const current_density = densities[selected_distribution];
-  const current_sample = samples[selected_distribution];
-  
-  // DENSITY PLOT
-  const density = d3.zip(
-    [0, ...heights, 70], 
-    [0, ...current_density, 0]
-  );
-  
-  // Update the y-axis
-  const y = d3.scaleLinear()
-    .range([height, 0])
-    .domain([0, Math.round(Math.max(...current_density) * 1.25 * 100) / 100]);
-
-  // Transition the existing y-axis into the new one
-  y_axis
-    .transition()
-    .duration(1000)
-    .call(d3.axisLeft(y));
-  
-  // Update the "d" (path) attribute of the density curve
-  curve
-    .datum(density)
-    .transition()
-    .duration(1000)
-    .attr("d",  d3.line()
-        .curve(d3.curveBasis)
-        .x(function(d) { return x(d[0]); })
-        .y(function(d) { return y(d[1]); })
-    );
-    
-  // FOREST
-  
-  // Note, `tree_positions_t` is the global dataset of forest x, y coordinates,
-  // we bind the current sample to it
-  const tree_data = tree_positions_t
-    .map((d, i) => ({...d, height: current_sample[i]}));
-
-  // TODO: This is *slow!*, find a way to speed up, maybe with Canvas?
-  // Here's a Canvas x D3 tutorial: 
-  // https://www.freecodecamp.org/news/d3-and-canvas-in-3-steps-8505c8b27444/
-  // Detailed: https://www.datamake.io/blog/d3-canvas-full#manual
-  //
-  // TODO: Get a handle on *responsive* canvas elements (e.g. like SVG viewbox)
-  // See: https://dev.to/georgedoescode/html5-canvas-responsive-2keh
-  //
-  // NOTE: Apparently this is all you need for responsive canvas. Can this be 
-  // applied to "Data You Can Punch"?
-  // canvas {
-  //  width: 100%;
-  //  object-fit: contain;
-  // }
-  // See: https://stackoverflow.com/questions/34772957/how-to-make-canvas-responsive
-  //
-  // TODO: Look into this Matter.js solution:
-  // https://www.youtube.com/watch?v=kdSDTaYY700
-  // Here's another cool tutorial: https://www.youtube.com/watch?v=hZkah1Y85Oc
-  trees
-    .transition()
-    .duration(500)
-    // Note, if you just do `current_sample[i]` D3 doesn't know how to interpolate
-    // from the current pixel value, so you need to manually input "XXpx"
-    .style("font-size", (d, i) => `${current_sample[i]}px`);
-  
-  /*
-  trees
-    .data(tree_data)
-    .transition()
-    .duration(1000)
-    .style("font-size", d => d.height);
-  */
-};
-```
-
-<!-- D3 to Test Forest Canvas --->
-
 :::{#forest-canvas-container}
 :::
 
@@ -533,7 +363,10 @@ context.textBaseline = "middle";
 // However if you inspect the canvas, it's *actual* width and height attributes
 // are: `canvas_width * scale`, `canvas_height * scale`.
 canvas_width = 1000;
-canvas_height = 500;
+canvas_height = 600;
+canvas_width_padding = 100;
+canvas_height_padding = 100;
+canvas_font_size = 80;
 scale = window.devicePixelRatio || 1;
 canvas
   // Adjust (e.g. upscale) the canvas dimensions by the `scale`
@@ -548,6 +381,14 @@ canvas
 // given to the context by the appropriate scale.
 context.scale(scale, scale);
 
+// Scale the tree positions such that they conform to the <canvas> size
+tree_positions = 
+  transpose(tree_positions_raw)
+  .map(d => ({
+      x: d.x * (canvas_width - canvas_width_padding) + (canvas_width_padding / 2),
+      y: d.y * (canvas_height - canvas_height_padding) + (canvas_width_padding / 2)
+  }));
+
 // This is the interface through which we use D3. We create an element, which we
 // can data-bind to in the usual way, but we *don't* add it to the DOM. We use
 // this container to *store* the data and use D3 to manipulate entering, exiting,
@@ -559,52 +400,155 @@ content_container = document.createElement("content");
 // do.
 content = d3.select(content_container)
   .selectAll()
-  .data(tree_positions_t)
+  .data(tree_positions)
   .join("text")
-  .text("🌲")
-  .attr("font-size", 100)
-  .attr("x", d => d.x * 10)
-  .attr("y", d => d.y * 10 + 10);
+  .attr("font-size", canvas_font_size)
+  .attr("x", d => d.x)
+  .attr("y", d => d.y);
 
-// console.log(content.nodes());
-
+// Draw the trees to the canvas
 draw = function() {
   // Clear the canvas
   context.clearRect(0, 0, canvas_width, canvas_height);
   
   // Render every element to the <canvas>
-  
   content.each(function(d, i) {
     const node = d3.select(this);
-    
-    // TODO: Just use the tree emoji directly, since the `.text()` is always the
-    // same. In fact, don't even use `.text("🌲")` in the first place.
     context.font = `${node.attr("font-size")}px monospace`;
-    context.fillText(node.text(), node.attr("x"), node.attr("y"));
+    context.fillText("🌲", node.attr("x"), node.attr("y"));
   });
-  
-  // context.font = "10px monospace";
-  // context.fillText("🌲", canvas_width / 2, canvas_height / 2);
 }
-
-// TODO: I want to move the tree position re-scaling from R into Javascript.
-// Then, I can base it off of the size that we set of <canvas> to. That re-scale
-// range function that I made will actually come in handy here.
-draw();
 ```
 
-<!-- Keyboard Keys test! ---->
-<br>
+<!-- D3 to Update the Density Curve and Forest --->
 
-```{=html}
-<!--
-Keyboard key elements! I wonder if we need to switch based on Client OS
-https://developer.mozilla.org/en-US/docs/Web/HTML/Element/kbd
+```{ojs}
+//| echo: false
+//| output: false
 
-NOTE: This person designed a sick keyboard css theme:
-https://dylanatsmith.com/wrote/styling-the-kbd-element
---->
+densities = {
+  return {
+    Normal: normal_density,
+    Uniform: uniform_density,
+    Point: point_density,
+    Gamma: left_gamma_density,
+    "Reverse Gamma": right_gamma_density,
+    Bimodal: bimodal_density
+  }
+};
 
-<kbd>⌘ B</kbd>
-<kbd>⇧⌘ Enter</kbd>
+// https://stats.stackexchange.com/questions/281162/scale-a-number-between-a-range
+rescale = function(x, x_min, x_max, target_min, target_max) {
+  return ((x - x_min) / (x_max - x_min)) * (target_max - target_min) + target_min;
+};
+
+rescale_array = function(array, target_min, target_max) {
+  const array_min = Math.min(...array);
+  const array_max = Math.max(...array);
+  return array.map(x => rescale(x, array_min, array_max, target_min, target_max));
+};
+
+// Scale the samples from each distribution such that they're relative to the
+// canvas font size (since this is what controls the tree "height").
+min_sample_value = canvas_font_size * 0.5;
+max_sample_value = canvas_font_size * 1.75;
+
+// The normal and the point sample should have the same mean, so I'm just going
+// to set the point sample tree height to that of the mean normal height, since
+// we can't re-scale the point mass (it has min == max).
+scaled_normal_mean = (rescale_array(normal_sample, min_sample_value, max_sample_value).reduce((a, b) => a + b)) / normal_sample.length;
+scaled_point_sample = point_sample.map(x => scaled_normal_mean);
+
+// We need to re-scale each sample to accommodate a reasonable font size
+samples = {
+  return {
+    Normal: rescale_array(normal_sample, min_sample_value, max_sample_value),
+    Uniform: rescale_array(uniform_sample, min_sample_value, max_sample_value),
+    Point: scaled_point_sample,
+    Gamma: rescale_array(left_gamma_sample, min_sample_value, max_sample_value),
+    "Reverse Gamma": rescale_array(right_gamma_sample, min_sample_value, max_sample_value),
+    Bimodal: rescale_array(bimodal_sample, min_sample_value, max_sample_value)
+  }
+};
+
+// Create buttons for switching between `densities`
+buttons = d3.select("#density-button-container")
+  .style("display", "flex")
+  .style("gap", "10px")
+  .selectAll('density-button')
+  .data(Object.keys(densities))
+  .enter()
+  .append('div')
+  .attr("class", "button-filter")
+  .call(div => div.append("p")
+    .style("margin", "0px")
+    .text(function(d) { return d })
+  )
+  // Passes the density key of the inner text element to the density function
+  .on("click", function() { 
+    // Toggle the button's active state
+    d3.selectAll(".button-filter").classed("active", false);
+    d3.select(this).classed("active", true); 
+    
+    // Update the plots
+    update(d3.select(this).select("p").text());
+  });
+
+// Update the distribution shown in the D3 plot and "forest". 
+update = function(selected_distribution) {
+  const duration_ms = 1000;
+  const current_density = densities[selected_distribution];
+  const current_sample = samples[selected_distribution];
+  
+  // DENSITY PLOT
+  const density = d3.zip(
+    [0, ...heights, 70], 
+    [0, ...current_density, 0]
+  );
+  
+  // Update the y-axis
+  const y = d3.scaleLinear()
+    .range([height, 0])
+    .domain([0, Math.round(Math.max(...current_density) * 1.25 * 100) / 100]);
+
+  // Transition the existing y-axis into the new one
+  y_axis
+    .transition()
+    .duration(duration_ms)
+    .call(d3.axisLeft(y));
+  
+  // Update the "d" (path) attribute of the density curve
+  curve
+    .datum(density)
+    .transition()
+    .duration(duration_ms)
+    .attr("d",  d3.line()
+        .curve(d3.curveBasis)
+        .x(function(d) { return x(d[0]); })
+        .y(function(d) { return y(d[1]); })
+    );
+    
+  // FOREST
+  
+  // Update the tree font-size in `content` and re-draw the forest
+  content
+    .transition()
+    .duration(duration_ms)
+    .attr("font-size", (d, i) => (current_sample[i]));
+  
+  // Update loop for the <canvas> drawing, synced with the `content.transition()`
+  // above. `d3.timer()` is just like `requestAnimationFrame`, it's going to run
+  // at 60 fps by default. Recall that `draw()` is getting data from the global
+  // `content` object, so it's synced automatically.
+  var t = d3.timer(function(elapsed) { 
+    draw();
+    if (elapsed > duration_ms) { 
+      t.stop();
+    }
+  });
+};
+
+// Initialize the forest to match the normal density
+content.attr("font-size", (d, i) => (samples.Normal[i]));
+draw();
 ```
