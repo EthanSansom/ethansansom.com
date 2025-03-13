@@ -147,13 +147,37 @@ ojs_define(bimodal_sample)
 
 # Process a .txt "drawing" of the forest where a "T" represents a tree and " "
 # is a gap between trees. Returns a data.frame of x, y coordinates for each tree.
-tree_positions <- readLines("resources/tree_positions.txt")
-tree_positions <- tree_positions |>
-  str_pad(width = max(nchar(tree_positions)), side = "right") |>
-  map(\(line) which(str_split_1(line, "") == "T")) |>
+object_positions <- readLines("resources/tree_positions.txt")
+object_positions <- object_positions |>
+  str_pad(width = max(nchar(object_positions)), side = "right") |>
+  map(\(line) str_split_1(line, ""))
+
+forest_positions <- object_positions |>
+  map(\(line) which(line != " ")) |>
   enframe(value = "x", name = "y") |>
-  unnest_longer(col = x) |>
+  unnest_longer(col = "x") |>
   mutate(
+    # Add the emoji
+    key = map2_chr(x, y, \(x, y) object_positions[[y]][[x]]),
+    emoji = case_match(
+      key,
+      "T" ~ "🌲",
+      "R" ~ "🪨",
+      "D" ~ "🦌",
+      "L" ~ "🪵",
+      "H" ~ "🦔"
+    ),
+    type = if_else(key == "T", "tree", "other"),
+    
+    # Add a scale factor to non-trees
+    font_scale = case_match(
+      key,
+      "T" ~ 1,
+      "D" ~ 0.8,
+      "H" ~ 0.5,
+      .default = sample(seq(0.4, 0.9, 0.1), n(), TRUE)
+    ),
+    
     # Apply small horizontal perturbations
     x = pmax(0, x + rnorm(n = n(), sd = 0.1)),
     
@@ -162,21 +186,70 @@ tree_positions <- tree_positions |>
     y = y / max(y)
   )
 
-if (nrow(tree_positions) != 100) {
-  cli::cli_abort("`tree_positions` must have 100 rows, not {nrow(tree_positions)}.")
+if (nrow(forest_positions %>% filter(emoji == "🌲")) != 100) {
+  cli::cli_abort("`tree_positions` must have 100 tree rows.")
 }
 
-ojs_define(tree_positions_raw = tree_positions)
+ojs_define(forest_positions_raw = forest_positions)
 ```
+
+:::::{.column-screen-inset style="padding: 20px;"}
+:::::{.columns}
+
+<!-- Header Columns for Buttons ---->
+
+:::::{.column style="padding: 10px; width: 50%;"}
 
 :::{#density-button-container}
 :::
 
+:::::
+
+:::::{.column style="padding: 10px; width: 50%;"}
+:::::
+
+
+<!-- Plot Columns for Distribution and Forest ---->
+<!--
+For now, since the forest text is longer, I'm leaving the title and sub-title
+in WITH the plot, but if we want to align the tops of each plot we'll have to
+push the titles into a new set of two columns.
+--->
+
+:::::{.column style="padding: 10px; width: 50%;"}
+
+```{=html}
+<p id = "density-title" style = "font-weight: 600;">
+The Normally Density Curve
+</p>
+<p id = "density-subtitle" style = "opacity: 0.6;">
+This density indicates that 65% of trees are between 5 and 10 meters tall.
+</p>
+```
+
 :::{#density-container}
 :::
 
-:::{#forest-container}
+:::::
+
+:::::{.column style="padding: 10px; width: 50%;"}
+
+```{=html}
+<p id = "forest-title" style = "font-weight: 600;">
+The Forest with Normally Distributed Tree Heights
+</p>
+<p id = "forest-subtitle" style = "opacity: 0.6;">
+This forest contains 15 large trees (those taller than 40 meters). If tree height follows a normal distribution, the probability of a tree being taller than 40 meters is around 15.56%.
+</p>
+```
+
+:::{#forest-canvas-container}
 :::
+
+:::::
+
+:::::
+:::::
 
 <!-- CSS for Custom Buttons (TODO: Move elsewhere, maybe website-wide) --->
 
@@ -331,9 +404,6 @@ curve = svg
 
 <!-- D3 to Initialize the Forest --->
 
-:::{#forest-canvas-container}
-:::
-
 ```{ojs}
 //| echo: false
 //| output: false
@@ -363,7 +433,7 @@ context.textBaseline = "middle";
 // However if you inspect the canvas, it's *actual* width and height attributes
 // are: `canvas_width * scale`, `canvas_height * scale`.
 canvas_width = 1000;
-canvas_height = 600;
+canvas_height = 700;
 canvas_width_padding = 100;
 canvas_height_padding = 100;
 canvas_font_size = 80;
@@ -381,12 +451,15 @@ canvas
 // given to the context by the appropriate scale.
 context.scale(scale, scale);
 
-// Scale the tree positions such that they conform to the <canvas> size
-tree_positions = 
-  transpose(tree_positions_raw)
+// Scale the tree and decor positions such that they conform to the <canvas> size
+forest_positions = 
+  transpose(forest_positions_raw)
   .map(d => ({
       x: d.x * (canvas_width - canvas_width_padding) + (canvas_width_padding / 2),
-      y: d.y * (canvas_height - canvas_height_padding) + (canvas_width_padding / 2)
+      y: d.y * (canvas_height - canvas_height_padding) + (canvas_width_padding / 2),
+      emoji: d.emoji,
+      type: d.type,
+      font_scale: d.font_scale
   }));
 
 // This is the interface through which we use D3. We create an element, which we
@@ -400,11 +473,16 @@ content_container = document.createElement("content");
 // do.
 content = d3.select(content_container)
   .selectAll()
-  .data(tree_positions)
+  .data(forest_positions)
   .join("text")
-  .attr("font-size", canvas_font_size)
+  .attr("font-size", d => canvas_font_size * d.font_scale)
   .attr("x", d => d.x)
-  .attr("y", d => d.y);
+  .attr("y", d => d.y)
+  .text(d => d.emoji)
+  .classed("tree", d => (d.type === "tree"));
+
+// console.log(content.nodes());
+console.log(trees.nodes());
 
 // Draw the trees to the canvas
 draw = function() {
@@ -415,7 +493,7 @@ draw = function() {
   content.each(function(d, i) {
     const node = d3.select(this);
     context.font = `${node.attr("font-size")}px monospace`;
-    context.fillText("🌲", node.attr("x"), node.attr("y"));
+    context.fillText(node.text(), node.attr("x"), node.attr("y"));
   });
 }
 ```
@@ -531,7 +609,8 @@ update = function(selected_distribution) {
   // FOREST
   
   // Update the tree font-size in `content` and re-draw the forest
-  content
+  const trees = d3.select(content_container).selectAll("text.tree");
+  trees
     .transition()
     .duration(duration_ms)
     .attr("font-size", (d, i) => (current_sample[i]));
@@ -549,6 +628,5 @@ update = function(selected_distribution) {
 };
 
 // Initialize the forest to match the normal density
-content.attr("font-size", (d, i) => (samples.Normal[i]));
-draw();
+update("Normal");
 ```
