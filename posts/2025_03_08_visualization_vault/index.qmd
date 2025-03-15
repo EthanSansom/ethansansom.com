@@ -2,6 +2,7 @@
 title: "Visualization Vault"
 date: "2025-03-08"
 categories: ["data-viz", "draft"]
+css: styles.css
 # image: "vlightr_hex.svg"
 # smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.svg">'
 description: |
@@ -29,99 +30,19 @@ editor:
 ---
 
 <!-- 
-Use lightbox for the videos as well, you'll have to do this yourself:
-https://github.com/quarto-dev/quarto-cli/discussions/9290
-
-Glightbox docs: https://github.com/biati-digital/glightbox/blob/master/README.md
-
-TODO: Make the file-folder set up. I think it's fine if the file folder ends up
-"on-top" of the header text of the article. Actually, that's kind of cool.
+TODO: 
+- Add one of those fun twisting grids to the Color Sorting example
+- Change the article description to reflect that this is a "file cabinet" of sorts
+- Encourage clicking on the items somehow
+- Adjust the CSS to prevent the folder text from disapearing in dark mode
 --->
 
-```{=html}
-<style>
-.file-cabinet {
-  position: relative;
-  width: 100%;
-  height: 300px;
-}
-
-.folder {
-  position: absolute;
-  width: 354px;
-  height: 283px;
-  transition: transform 0.3s ease-in-out;
-}
-
-.folder-contents {
-  position: absolute;
-  width: 354px;
-  height: 283px;
-}
-
-.folder-contents-wrapper {
-  border: 1px solid #1E1E1E;
-  background-color: #FFFBFC;
-  border-radius: 17px;
-  padding: 10px;
-}
-
-.folder:not(.raised):hover {
-  position: absolute;
-  width: 354px;
-  height: 283px;
-  transform: translateY(-10px);
-  cursor: pointer;
-}
-
-.folder-title {
-  position: absolute;
-  top: 7px;
-  left: 12px;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.folder-text {
-  position: absolute;
-  top: 75px;
-  left: 15px;
-  font-size: 14px;
-}
-
-.folder-file-container {
-  position: absolute;
-  top: 200px;
-  left: 15px;
-}
-
-.folder-file {
-  width: 50px;
-  height: auto;
-  padding: 2px;
-}
-
-.divider {
-  height: 225px;
-}
-</style>
-```
 
 ```{ojs}
 //| echo: false
 //| output: false
 
 d3 = require("d3@7");
-
-// Load the file urls associated with each project
-treemap = FileAttachment("resources/treemap.png").url();
-
-/*
-d3.select(".folder-contents")
-  .append("img")
-  .attr("src", treemap)
-  .attr("width", "100%");
-*/
 
 // Record the original "bottom" position of each folder
 d3.selectAll(".folder")
@@ -153,6 +74,22 @@ document.addEventListener("click", function(event) {
     // A folder was clicked, reset all other folders and raise the clicked folder
     folders
       .classed("raised", false)
+      .call(folder => folder.select(".folder-text")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
+      .call(folder => folder.select(".folder-file-container")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
       .transition()
       .duration(duration_ms)
       .style("bottom", function() { return d3.select(this).attr("data-bottom") });
@@ -163,39 +100,48 @@ document.addEventListener("click", function(event) {
       .duration(duration_ms)
       .style("bottom", raise_height);
       
-    // Remove any folder contents if they exist
-    d3.select(".folder-contents").select("div").remove();
-      
-    // Fade in the corresponding image for this folder
-    d3.select(".folder-contents")
-      .style("bottom", raise_height)
-      .style("left", `${folder_width + 10 + parseFloat(d3.select(clicked_element).style("left"))}px`)
-      .append("div")
-      .attr("class", "folder-contents-wrapper")
-      .call(div => div.append("img").attr("width", "100%").attr("src", treemap))
-      .style("opacity", 0)
-      .transition()
-      .delay(100)
-      .duration(duration_ms)
-      .style("opacity", 1);
-    
+    // Show the contents of the folder
+    d3.select(clicked_element)
+      .classed("raised", true)
+      .call(folder => folder.select(".folder-text")
+        .style("display", "inline")
+        .style("opacity", 0)
+        .transition()
+        .delay(200)
+        .duration(duration_ms)
+        .style("opacity", 1)
+      )
+      .call(folder => folder.select(".folder-file-container")
+        .style("display", "flex")
+        .style("opacity", 0)
+        .transition()
+        .delay(200)
+        .duration(duration_ms)
+        .style("opacity", 1)
+      );
   } else {
     // Clicked outside of any folder, reset all folders
     folders
       .classed("raised", false)
+      .call(folder => folder.select(".folder-text")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
+      .call(folder => folder.select(".folder-file-container")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
       .transition()
       .duration(duration_ms)
       .style("bottom", function() { return d3.select(this).attr("data-bottom") });
-    
-    // Remove any folder contents if they exist
-    d3.select(".folder-contents")
-      .select("div")
-      .transition()
-      .duration(duration_ms / 3)
-      .style("opacity", 0)
-      .on("end", function() {
-        d3.select(this).remove();
-      });
   }
 });
 ```
@@ -206,7 +152,31 @@ document.addEventListener("click", function(event) {
 
 :::::{.file-cabinet}
 
-:::{.folder-contents}
+:::{.folder style="bottom: 100px; left: 335px;"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">Dashboard</span>
+<span class="folder-text">
+I am a frequent victim of my own wild disregard for my personal time, which once
+manifested in a short-lived quest to sell interactive dashboards as a freelancer 
+on <a href="https://www.fiverr.com/">Fiverr</a>. I created this dashboard for my 
+freelancer page, using R and the <a href="https://plotly.com/r/">{plotly}</a> 
+interactive graphing library.
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">terminal.mp4</p>
+  <div class = "file">
+    <a 
+      href="https://vimeo.com/1063903950" class="glightbox" data-gallery="Dashboard">
+      <img src="resources/dashboard-thumbnail.jpg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
 :::
 
 :::{.folder style="bottom: 90px; left: 60px;"}
@@ -214,10 +184,30 @@ document.addEventListener("click", function(event) {
 <img src="resources/folder.svg">
 <span class="folder-title">TidyTuesday Cats</span>
 <span class="folder-text">
-This is the text contents of the TidyTuesday Cats
+My <a href="https://github.com/rfordatascience/tidytuesday/tree/main/data/2023/2023-01-31">TidyTuesday 2023-01-31</a> 
+plot draws the distance traveled by a group of GPS-strapped cats, a choice informed 
+by my desire to show off some great cat names - shoutout to Smudge and Macaulay Mccat.
 </span>
-<div class="file-container"></div>
 ```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">cats.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/cat_circles.png" 
+      class="glightbox" 
+      data-gallery="TidyTuesday Cats"
+      data-description="The data for this plot comes from a 2013 to 2017 study, in which 
+      cat owners across the world rigged their cats with GPS sensors which recorded their 
+      pets' movements over the course of many months."
+    >
+      <img src="resources/cat_circles.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
 :::
 
 :::{.folder style="bottom: 40px; left: 90px;"}
@@ -225,21 +215,58 @@ This is the text contents of the TidyTuesday Cats
 <img src="resources/folder.svg">
 <span class="folder-title">Color Sorting</span>
 <span class="folder-text">
-This is the text contents of the Color Sorting
+These are the outputs of a program which used Python's <a href="https://pillow.readthedocs.io/en/stable/">Pillow</a> 
+imaging library to sub-divide images into a grid of small squares and re-arrange
+those squares into a new image.
 </span>
-<div class="folder-file-container"></div>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">color-sort.gif</p>
+  <div class = "file">
+    <a 
+      href="resources/color_sort.gif" 
+      class="glightbox" 
+      data-gallery="Color Sorting"
+    >
+      <img src="resources/color_sort.gif" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
 ```
 :::
+:::
 
-:::{.folder style="bottom: 60px; left: 440px;"}
+:::{.folder style="bottom: 60px; left: 420px;"}
 ```{=html}
 <img src="resources/folder.svg">
 <span class="folder-title">World Data Comp.</span>
 <span class="folder-text">
-This is the text contents of the World Data Comp.
+This plot, which uses simulated data, was my attempt at the 2023 <a href="https://informationisbeautiful.net/">Information is Beautiful</a> 
+<a href="(https://informationisbeautiful.net/2023/the-winners-of-the-world-dataviz-prize-2023/">World Dataviz Competition</a>. 
 </span>
-<div class="folder-file-container"></div>
 ```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">indicators.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/world_data_plot.svg" 
+      class="glightbox" 
+      data-gallery="World Data Comp."
+      data-description="The goal of the competition was to produce a piece of data-visualization showing
+trends in global measures of well-being using a dataset provided by Information is Beautiful. This plot
+was never submitted to the competition as I, getting carried away with my {ggplot2} code, never adapted
+the plot to use the non-simulated dataset."
+    >
+      <img src="resources/world_data_plot.svg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
 :::
 
 :::{.folder style="bottom: 0px; left: 20px;"}
@@ -247,10 +274,24 @@ This is the text contents of the World Data Comp.
 <img src="resources/folder.svg">
 <span class="folder-title">Currency Terminal</span>
 <span class="folder-text">
-This is the text contents of the currency terminal
+This is a tiny terminal application coded mostly in Python with a little bit
+of R. It fetches current and historical global currency 
+exchange data and features a mostly-ASCII-display, complete with a scrolling 
+currency ticker.
 </span>
-<div class="folder-file-container"></div>
 ```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">terminal.mp4</p>
+  <div class = "file">
+    <a href="https://vimeo.com/1063903776" class="glightbox" data-gallery="Currency Terminal">
+      <img src="resources/terminal-thumbnail.jpg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
 :::
 
 :::{.folder style="bottom: 0px; left: 350px;"}
@@ -258,10 +299,67 @@ This is the text contents of the currency terminal
 <img src="resources/folder.svg">
 <span class="folder-title">TCAT Report</span>
 <span class="folder-text">
-This is the text contents of the TCAT report
+These are a few slides from a presentation I gave at the end of an intership
+with <a href="">The Center for Active Transportation (TCAT)</a>. I was tasked with
+measuring the effectiveness of transport programs put in place during the COVID-19 
+pandemic by the City of Toronto.
 </span>
-<div class="folder-file-container"></div>
 ```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">bar.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/bar_chart_1.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/bar_chart_1.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">treemap.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/treemap.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/treemap.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">map.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/map_1.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/map_1.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">dumbell.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/dumbell.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/dumbell.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
 :::
 
 :::::
