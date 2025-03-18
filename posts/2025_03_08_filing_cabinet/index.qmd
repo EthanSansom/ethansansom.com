@@ -1,0 +1,472 @@
+---
+title: "Filing Cabinet"
+date: "2025-03-08"
+categories: ["data-viz"]
+css: styles.css
+# image: "vlightr_hex.svg"
+# smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.svg">'
+description: |
+  Welcome to my digial filing cabinet. Here, I keep evidence of projects whose
+  source code has been lost to corrupted USB sticks, abandoned computers,
+  and my own forgetfulness. Click on a folder to see it's contents.
+summary: |
+  Welcome to my digial filing cabinet. Here, I keep evidence of projects whose
+  source code has been lost to corrupted USB sticks, abandoned computers,
+  and my own forgetfulness.
+format:
+  html:
+    include-in-header:
+      - text: |
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" />
+          <script src="https://cdn.jsdelivr.net/gh/mcstudios/glightbox/dist/js/glightbox.min.js"></script>
+    include-after-body:
+      - text: |
+          <script type="text/javascript">
+              const lightbox = GLightbox({});
+          </script>
+editor:
+  markdown: 
+    wrap: 72
+---
+
+```{ojs}
+//| echo: false
+//| output: false
+
+d3 = require("d3@7");
+
+// Count the number of folders
+n_folders = d3.selectAll(".folder").size();
+
+// Initialize the positions and data-attributes of the folders
+d3.selectAll(".folder")
+  // Set the positions of folders on thin screen widths, left position is 
+  // calculated on re-size such that the folder is centered.
+  .attr("data-thinscreen-bottom", (d, i) => `${(n_folders - i) * 50}px`)
+  
+  // Attributes used to hold the current desired setting, based on the screen width.
+  .attr("data-z-index", (d, i) => 100 + i)
+  .attr("data-left", function() { return d3.select(this).attr("data-widescreen-left") })
+  .attr("data-bottom", function() { return d3.select(this).attr("data-widescreen-bottom") })
+
+  // Set the z-index and bottom position applied for when a folder is "raised".
+  // Note that by default (on wide-screens) the z-index doesn't change on raise.
+  .attr("data-raised-bottom", "350px")
+  .attr("data-raised-z-index", (d, i) => 100 + i)
+  
+  // Apply the initial styles
+  .style("z-index", function() { return d3.select(this).attr("data-z-index") })
+  .style("left", function() { return d3.select(this).attr("data-left") })
+  .style("bottom", function() { return d3.select(this).attr("data-bottom") });
+
+// Listener for clicking on a folder. Raises a folder and shows it's contents
+// on click of a folder. On non-folder click, open folders are lowered.
+document.addEventListener("click", function(event) {
+  const clicked_element = event.target.closest(".folder");
+  const folders = d3.selectAll(".folder");
+  
+  const duration_ms = 300;
+  const folder_width = 354;
+
+  if (clicked_element) {
+    // We're clicking on the raised folder, do nothing
+    if (d3.select(clicked_element).classed("raised")) {
+      return;
+    }
+  
+    // A folder was clicked, reset all other folders and raise the clicked folder
+    folders
+      .classed("raised", false)
+      .call(folder => folder.select(".folder-text")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
+      .call(folder => folder.select(".folder-file-container")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
+      // Set to the current default bottom placement and z-index
+      .style("z-index", function() { return d3.select(this).attr("data-z-index") })
+      .transition()
+      .duration(duration_ms)
+      .style("bottom", function() { return d3.select(this).attr("data-bottom") });
+    
+    // Raise the clicked folder
+    d3.select(clicked_element)
+      .classed("raised", true)
+      // Set to the raised bottom and z-index
+      .style("z-index", function() { return d3.select(this).attr("data-raised-z-index") })
+      .transition()
+      .duration(duration_ms)
+      .style("bottom", function() { return d3.select(this).attr("data-raised-bottom") });
+      
+    // Show the contents of the folder
+    d3.select(clicked_element)
+      .classed("raised", true)
+      .call(folder => folder.select(".folder-text")
+        .style("display", "inline")
+        .style("opacity", 0)
+        .transition()
+        .delay(200)
+        .duration(duration_ms)
+        .style("opacity", 1)
+      )
+      .call(folder => folder.select(".folder-file-container")
+        .style("display", "flex")
+        .style("opacity", 0)
+        .transition()
+        .delay(200)
+        .duration(duration_ms)
+        .style("opacity", 1)
+      );
+  } else {
+    // Clicked outside of any folder, reset all folders
+    folders
+      .classed("raised", false)
+      .call(folder => folder.select(".folder-text")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
+      .call(folder => folder.select(".folder-file-container")
+        .transition()
+        .duration(duration_ms)
+        .style("opacity", 0)
+        .on("end", function() {
+          d3.select(this).style("display", "none")
+        })
+      )
+      // Set to the current default bottom placement and z-index
+      .style("z-index", function() { return d3.select(this).attr("data-z-index") })
+      .transition()
+      .duration(duration_ms)
+      .style("bottom", function() { return d3.select(this).attr("data-bottom") });
+  }
+});
+
+// "Stack" folders when the display becomes too small to show all of them.
+stack_folders = function() {
+  const folders = d3.selectAll(".folder");
+  const n_folders = folders.size();
+  
+  const screen_width = window.innerWidth;
+  const cabinet_width = d3.select(".file-cabinet").node().offsetWidth;
+  const folder_width = 354;
+  const new_left = `${(cabinet_width - folder_width) / 2}px`;
+  
+  // Reset any open folders on screen re-size
+  folders
+    .classed("raised", false)
+    .call(folder => folder.select(".folder-text").style("opacity", 0))
+    .call(folder => folder.select(".folder-file-container").style("opacity", 0))
+    .style("z-index", function() { return d3.select(this).attr("data-z-index") })
+    .style("bottom", function() { return d3.select(this).attr("data-bottom") });
+  
+  if (screen_width < 850) {
+    // If we're on a small screen, move all folders to the center of the screen
+    // and "stack" them.
+    folders
+      .attr("data-bottom", function() { return d3.select(this).attr("data-thinscreen-bottom") })
+      .style("bottom", function() { return d3.select(this).attr("data-thinscreen-bottom") })
+      .style("left", new_left)
+      // On small screens, we don't increase the folder's height, we change it's 
+      // z-index to position it in front of other folders.
+      .attr("data-raised-bottom", function() { return d3.select(this).attr("data-thinscreen-bottom") })
+      .attr("data-raised-z-index", 200);
+  } else {
+    // If we're on a large screen, re-set to the folders' wide-screen positions
+    folders
+      .attr("data-bottom", function() { return d3.select(this).attr("data-widescreen-bottom") })
+      .style("bottom", function() { return d3.select(this).attr("data-widescreen-bottom") })
+      .style("left", function() { return d3.select(this).attr("data-widescreen-left") })
+      // On large screens, we raise the increase the folder's height and don't
+      // change it's z-index
+      .attr("data-raised-bottom", "350px")
+      .attr("data-raised-z-index", function() { return d3.select(this).attr("data-z-index") });
+  }
+};
+
+// Re-position the folders whenever the window is re-sized. This is necessary to
+// keep the folder stack in the center of the screen on thin screen widths.
+window.addEventListener("resize", stack_folders);
+
+// Increase the height of the divider on small screen, prevents the folder stack
+// from hitting the title.
+
+set_divider_height = function(query) {
+  const thinscreen_height = "350px";
+   const widescreen_height = "225px";
+  if (query.matches) {
+    d3.select(".divider").style("height", thinscreen_height);
+  } else {
+    d3.select(".divider").style("height", widescreen_height);
+  }
+}
+
+// Initialize the divider height and set on change
+max_width = window.matchMedia("(max-width: 850px)");
+set_divider_height(max_width);
+
+max_width.addEventListener("change", function() {
+  set_divider_height(max_width);
+});
+```
+
+
+:::{.divider}
+:::
+
+:::::{.file-cabinet}
+
+:::{.folder data-widescreen-bottom="100px" data-widescreen-left="335px"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">Dashboard</span>
+<span class="folder-text">
+I am a frequent victim of my own wild disregard for my personal time, which once
+manifested in a short-lived quest to sell interactive dashboards as a freelancer 
+on <a href="https://www.fiverr.com/">Fiverr</a>. I created this dashboard for my 
+freelancer page, using R and the <a href="https://plotly.com/r/">{plotly}</a> 
+interactive graphing library.
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">terminal.mp4</p>
+  <div class = "file">
+    <a 
+      href="https://vimeo.com/1063903950" class="glightbox" data-gallery="Dashboard">
+      <img src="resources/dashboard-thumbnail.jpg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
+:::
+
+:::{.folder data-widescreen-bottom="90px" data-widescreen-left="60px"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">TidyTuesday Cats</span>
+<span class="folder-text">
+My <a href="https://github.com/rfordatascience/tidytuesday/tree/main/data/2023/2023-01-31">TidyTuesday 2023-01-31</a> 
+plot draws the distance traveled by a group of GPS-strapped cats, a choice informed 
+by my desire to show off some great cat names - shoutout to Smudge and Macaulay Mccat.
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">cats.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/cat_circles.png" 
+      class="glightbox" 
+      data-gallery="TidyTuesday Cats"
+      data-description="The data for this plot comes from a 2013 to 2017 study, in which 
+      cat owners across the world rigged their cats with GPS sensors which recorded their 
+      pets' movements over the course of many months."
+    >
+      <img src="resources/cat_circles.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
+:::
+
+:::{.folder data-widescreen-bottom="40px" data-widescreen-left="90px"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">Color Sorting</span>
+<span class="folder-text">
+These are the outputs of a program which used Python's <a href="https://pillow.readthedocs.io/en/stable/">Pillow</a> 
+imaging library to sub-divide images into a grid of small squares and re-arrange
+those squares into a new image.
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">sort.gif</p>
+  <div class = "file">
+    <a 
+      href="resources/color_sort.gif" 
+      class="glightbox" 
+      data-gallery="Color Sorting"
+    >
+      <img src="resources/color_sort.gif" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">chop.gif</p>
+  <div class = "file">
+    <a 
+      href="resources/chop.gif" 
+      class="glightbox" 
+      data-gallery="Color Sorting"
+    >
+      <img src="resources/chop.gif" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">spiral.mp4</p>
+  <div class = "file">
+    <a 
+      href="https://vimeo.com/1066216348" 
+      class="glightbox" 
+      data-gallery="Color Sorting"
+    >
+      <img src="resources/spiral-thumbnail.jpg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
+:::
+
+:::{.folder data-widescreen-bottom="60px" data-widescreen-left="420px"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">World Data Comp.</span>
+<span class="folder-text">
+This plot, which uses simulated data, was my attempt at the 2023 <a href="https://informationisbeautiful.net/">Information is Beautiful</a> 
+<a href="(https://informationisbeautiful.net/2023/the-winners-of-the-world-dataviz-prize-2023/">World Dataviz Competition</a>. 
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">indicators.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/world_data_plot.svg" 
+      class="glightbox" 
+      data-gallery="World Data Comp."
+      data-description="The goal of the competition was to produce a piece of data-visualization showing
+trends in global measures of well-being using a dataset provided by Information is Beautiful. This plot
+was never submitted to the competition as I, getting carried away with my {ggplot2} code, never adapted
+the plot to use the non-simulated dataset."
+    >
+      <img src="resources/world_data_plot.svg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
+:::
+
+:::{.folder data-widescreen-bottom="0px" data-widescreen-left="20px"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">Currency Terminal</span>
+<span class="folder-text">
+This is a tiny terminal application coded mostly in Python with a little bit
+of R. It fetches current and historical global currency 
+exchange data and features a mostly-ASCII-display, complete with a scrolling 
+currency ticker.
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">terminal.mp4</p>
+  <div class = "file">
+    <a 
+      href="https://vimeo.com/1066315615" 
+      class="glightbox" 
+      data-gallery="Currency Terminal"
+    >
+      <img src="resources/terminal-thumbnail.jpg" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
+:::
+
+:::{.folder data-widescreen-bottom="0px" data-widescreen-left="350px"}
+```{=html}
+<img src="resources/folder.svg">
+<span class="folder-title">TCAT Report</span>
+<span class="folder-text">
+These are a few slides from a presentation I gave at the end of an intership
+with <a href="">The Center for Active Transportation (TCAT)</a>. I was tasked with
+measuring the effectiveness of transport programs put in place during the COVID-19 
+pandemic by the City of Toronto.
+</span>
+```
+:::{.folder-file-container}
+```{=html}
+<div>
+  <p class = "file-name">bar.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/bar_chart_1.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/bar_chart_1.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">treemap.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/treemap.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/treemap.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">map.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/map_1.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/map_1.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+
+<div>
+  <p class = "file-name">dumbell.svg</p>
+  <div class = "file">
+    <a 
+      href="resources/dumbell.png"
+      class="glightbox"
+      data-gallery="TCAT Report"
+    >
+      <img src="resources/dumbell.png" alt="image" style = "width: 100%;"/>
+    </a>
+  </div>
+</div>
+```
+:::
+:::
+
+:::::
