@@ -1,0 +1,91 @@
+/* Filing Cabinet ------------------------------------------------------------*/
+
+.file-cabinet {
+  position: relative;
+  width: 100%;
+  height: 300px;
+}
+
+.folder {
+  position: absolute;
+  width: 354px;
+  height: 283px;
+  transition: transform 0.3s ease-in-out;
+}
+
+.folder:not(.raised):hover {
+  position: absolute;
+  width: 354px;
+  height: 283px;
+  transform: translateY(-10px);
+  cursor: pointer;
+}
+
+.folder-title {
+  position: absolute;
+  top: 7px;
+  left: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1E1E1E;
+}
+
+.folder-text {
+  position: absolute;
+  top: 60px;
+  left: 15px;
+  padding-right: 15px;
+  font-size: 14px;
+  display: none;
+  color: #1E1E1E;
+}
+
+.folder-file-container {
+  position: absolute;
+  bottom: 15px;
+  left: 15px;
+  display: none;
+  column-gap: 8px;
+}
+
+.file {
+  width: 75px;
+  height: auto;
+  padding: 2px;
+  border: 1px solid #787677; /* This is #1E1E1E (offblack) at 60% opacity */
+  border-radius: 2px;
+}
+
+.file-name {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: #1E1E1E;
+  opacity: 0.6;
+  margin-bottom: 2px;
+}
+
+/* Provides breathing room above the filing cabinet */ 
+.divider {
+  height: 225px;
+}
+
+/* Mobile --------------------------------------------------------------------*/
+
+
+/* Override Dark Mode --------------------------------------------------------*/
+
+a {
+  color: #1E1E1E;
+}
+
+a:not(.nav-link):not(.navbar-brand):hover {
+  color: #96BFE3;
+}
+
+a:active {
+  color: #1E1E1E;
+}
+
+a:visited {
+  color: #1E1E1E;
+}
