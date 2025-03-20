@@ -396,6 +396,20 @@ squashed <- employment |>
 print(squashed)
 ```
 
+```{r phinterval-dplyr-output}
+#| include: false
+#| column: screen-inset
+#| echo: false
+squashed <- employment |>
+  group_by(name) |>
+  summarize(employed = phint_squash(job_interval)) |>
+  mutate(unemployed = phint_invert(employed))
+
+# TODO: Figure out how to print this properly! I want is to print wide in the
+# center of the screen
+print(squashed, width = Inf)
+```
+
 Our boss's intimidating third question is now just a matter of taking the 
 intersection of Bruce's and Clark's employment histories with `phint_intersect()`.
 
