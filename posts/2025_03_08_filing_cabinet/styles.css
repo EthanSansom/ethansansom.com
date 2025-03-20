@@ -69,23 +69,20 @@
   height: 225px;
 }
 
-/* Mobile --------------------------------------------------------------------*/
-
-
 /* Override Dark Mode --------------------------------------------------------*/
 
-a {
+.folder a {
   color: #1E1E1E;
 }
 
-a:not(.nav-link):not(.navbar-brand):hover {
+.folder a:not(.nav-link):not(.navbar-brand):hover {
   color: #96BFE3;
 }
 
-a:active {
+.folder a:active {
   color: #1E1E1E;
 }
 
-a:visited {
+.folder a:visited {
   color: #1E1E1E;
 }
