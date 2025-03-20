@@ -1,16 +1,16 @@
 ---
 title: "Filing Cabinet"
 date: "2025-03-08"
-categories: ["data-viz"]
+categories: ["data-viz", "featured]
 css: styles.css
 # image: "vlightr_hex.svg"
-# smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.svg">'
+smallimage: '<img src="posts/2025_03_08_filing_cabinet/filing_cabinet_small.svg">'
 description: |
-  Welcome to my digial filing cabinet. Here, I keep evidence of projects whose
+  Welcome to my digital filing cabinet. Here, I keep evidence of projects whose
   source code has been lost to corrupted USB sticks, abandoned computers,
-  and my own forgetfulness. Click on a folder to see it's contents.
+  and my own forgetfulness.
 summary: |
-  Welcome to my digial filing cabinet. Here, I keep evidence of projects whose
+  Welcome to my digital filing cabinet. Here, I keep evidence of projects whose
   source code has been lost to corrupted USB sticks, abandoned computers,
   and my own forgetfulness.
 format:
