@@ -1,0 +1,224 @@
+---
+title: "Linkedin Banner"
+date: "2025-03-08"
+categories: ["draft"]
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+:::{.spacer style="height: 500px"}
+:::
+
+:::: {#matter-container}
+::::
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// TODO: Add `is_mobile` and make the width 400 + remove some of the bars if
+// we're in a mobile setting.
+
+// Imports ---------------------------------------------------------------------
+
+d3 = require("d3");
+Matter = require("matter-js");
+
+Engine = Matter.Engine
+Bodies = Matter.Bodies
+Composite = Matter.Composite
+
+// Constants -------------------------------------------------------------------
+
+// Dimensions of the SVG viewbox and margins, defines our world-space
+width = 900;
+height = 200;
+stroke_width = 2;
+
+margin_left = 10;
+margin_right = 10;
+margin_top = 10;
+margin_bottom = 10;
+
+sample_with_replacement = function(values, n) {
+  return d3.range(n).map(() => values[d3.randomInt(values.length)()]);
+}
+
+// Generate some bars
+bar_width = 30;
+heights = sample_with_replacement([1, 2, 3, 4, 5, 6].map(x => x * bar_width), 25);
+colors = ["#F3BD37", "#96BFE3", "#FA5C4B"];
+
+data = 
+  heights
+  .map((height, index) => ({
+    index: index,
+    height: height,
+    width: bar_width,
+    color: colors[index % 3]
+  }))
+
+data2 = heights
+  .map((height, index) => ({
+    index: 19 - index,
+    height: height,
+    width: bar_width,
+    color: colors[index % 3]
+  }))
+
+// Helpers ---------------------------------------------------------------------
+
+// Transform Matter body vertices into SVG <polygon> points
+vertices_to_points = function(vertices) {
+  return vertices.map(vertex => `${vertex.x},${vertex.y}`).join(" ")
+}
+
+// SVG -------------------------------------------------------------------------
+
+// Set the SVG viewbox
+svg = d3.select("#matter-container")
+  .style("width", width + "px")
+  .style("height", height + "px")
+  .append("svg")
+  .attr("viewBox", [0, 0, width, height])
+  .attr("style", "max-width: 100%; height: auto;")
+  // Allows the physics objects to fall outside of the viewbox
+  .attr("overflow", "visible");
+
+bar_container = svg.append("g").classed("bar-container", true)
+
+// Physics ---------------------------------------------------------------------
+
+// Create an engine
+engine = Engine.create();
+engine.gravity.scale = 0.001;
+engine.gravity.y = 1;
+engine.gravity.x = 0;
+
+// Global variable which records all physics objects in the scene
+bodies = engine.world.bodies;
+
+// Ground
+ground_width = 10;
+ground = Bodies.rectangle(
+  width / 2, height - (margin_bottom / 2), width, margin_bottom,
+  { 
+    isStatic: true, 
+    label: "ground"
+  }
+);
+Composite.add(engine.world, ground);
+
+left_wall = Bodies.rectangle(
+  0, height - (margin_bottom / 2), 10, 600,
+  { 
+    isStatic: true, 
+    label: "left-wall"
+  }
+);
+Composite.add(engine.world, left_wall);
+
+right_wall = Bodies.rectangle(
+  width - (margin_right / 2), height - (margin_bottom / 2), 10, 600,
+  { 
+    isStatic: true, 
+    label: "right-wall"
+  }
+);
+Composite.add(engine.world, right_wall)
+
+// TODO: Add walls
+  
+// Add a mouse constraint, which allows the "fist" to be manipulated (dragged)
+// using the mouse.
+mouse = Matter.Mouse.create(document.querySelector("#matter-container"));
+mouse_constraint = Matter.MouseConstraint.create(engine, {
+  mouse: mouse,
+  constraint: { stiffness: 0.5 }
+})
+Composite.add(engine.world, mouse_constraint);
+
+// Create the bar chart physics bodies and render them to the screen
+create_bars = function(data, y_offset = 0) {
+  
+  // Create bodies corresponding to each bar in bar chart
+  bar_container
+    .selectAll("bar")
+    .data(data)
+    // Initialize a <polygon> for each bar. We'll use the vertices
+    // provided by Matter to draw these later.
+    .join("polygon")
+    .attr("stroke-width", stroke_width)
+    // Initialize a Matter physics body for each bar. Note `this` means something
+    // different if you using a `=>` function here - be aware!
+    .each(function(d, i) {
+      
+      const x = d.index * d.width * 1.2;
+      const bar_width = d.width;
+      const bar_height = d.height;
+      
+      // Matter expects centered x, y coordinates whereas SVG and D3 expects
+      // coordinates relative to the top-left.
+      const body = Bodies.rectangle(
+        // Center relative to the full band-width, to put each bar in the middle
+        x + (bar_width / 2),
+        height - margin_bottom - (bar_height / 2) + y_offset,
+        bar_width, 
+        bar_height
+      );
+      Composite.add(engine.world, body);
+      
+      // Synchronize the D3 and Matter IDs and positions
+      d3.select(this)
+        .attr("id", `body-${body.id}`)
+        .attr("data-body-id", body.id)
+        .attr("points", vertices_to_points(body.vertices))
+        .attr("fill", d.color)
+        .attr("stroke", "#FFFBFC")
+        .attr("stroke-width", stroke_width)
+        .raise()
+    });
+}
+
+// Initialize the bars
+create_bars(data);
+create_bars(data2, -200)
+```
+
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// As always, Danielle Navarro is the best. OJS cells implicitly iterates over
+// generator functions (`function*`) repeatedly, which allows them to be used
+// as update/game loops. See this blog post for details:
+// https://blog.djnavarro.net/posts/2024-01-09_observable-js-art/
+
+// Engine/render update loop. We're using Matter.js to increment each physics
+// step and D3.js to re-render the physics bodies in their new positions.
+function* update() {
+  
+  while (true) {
+    // Update the engine
+    Engine.update(engine, 5)
+    
+    // Move the vertices of every body to their new positions. This is the 
+    // SVG equivalent of Matter's example <canvas> render loop:
+    // https://github.com/liabru/matter-js/wiki/Rendering
+    bodies.filter(
+      body => body.label != "ground" & body.label != "right-wall" & body.label != "left-wall"
+    ).forEach(body => {
+      svg.select(`#body-${body.id}`)
+        .attr('points', vertices_to_points(body.vertices));
+    })
+    
+    // Finish
+    yield
+  }
+}
+
+// Call the `update()` function once to begin the loop
+update();
+```
