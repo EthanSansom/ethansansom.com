@@ -218,6 +218,14 @@ push the titles into a new set of two columns.
 
 :::::{.column style="padding: 10px; width: 50%;"}
 
+<!---
+TODO: Prepare the contents of each sub-title and title (pass via R as a named
+list). The density subtitle should describe the locations of "humps" and "spikes"
+as well as the general "vibe" of the density. The forest should give some details
+about the number of "large" or "small" trees. You can do this in R by using the
+*actual* values of the samples to prepare the text + known means of each distribution.
+---->
+
 ```{=html}
 <p id = "density-title" style = "font-weight: 600;">
 The Normally Density Curve
