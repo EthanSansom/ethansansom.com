@@ -1,7 +1,7 @@
 ---
 title: "Intro to Probability Distributions"
 date: "2025-01-30"
-categories: ["featured", "data-analysis", "draft"]
+categories: ["draft"]
 css: "styles.css" # Ahhh! It reads the CSS relative to the local directory
 # image: "vlightr_hex.svg"
 # smallimage: '<img src="posts/2025_01_30_vlightr/vlightr_small.svg">'
