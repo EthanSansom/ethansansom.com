@@ -35,6 +35,9 @@ editor:
 
 d3 = require("d3@7");
 
+// Set a "small" screen width threshold
+small_screen_width = 850;
+
 // Count the number of folders
 n_folders = d3.selectAll(".folder").size();
 
@@ -62,10 +65,16 @@ d3.selectAll(".folder")
 // Listener for clicking on a folder. Raises a folder and shows it's contents
 // on click of a folder. On non-folder click, open folders are lowered.
 document.addEventListener("click", function(event) {
+  const screen_width = window.innerWidth;
   const clicked_element = event.target.closest(".folder");
   const folders = d3.selectAll(".folder");
   
-  const duration_ms = 300;
+  // Shorten transitions on small screens, since we're not raising the folder
+  const delay_ms = (screen_width < small_screen_width) ? 100 : 200;
+  const duration_ms = (screen_width < small_screen_width) ? 200 : 300;
+  
+  // const delay_ms = 200;
+  // const duration_ms = 300;
   const folder_width = 354;
 
   if (clicked_element) {
@@ -115,7 +124,7 @@ document.addEventListener("click", function(event) {
         .style("display", "inline")
         .style("opacity", 0)
         .transition()
-        .delay(200)
+        .delay(delay_ms)
         .duration(duration_ms)
         .style("opacity", 1)
       )
@@ -123,7 +132,7 @@ document.addEventListener("click", function(event) {
         .style("display", "flex")
         .style("opacity", 0)
         .transition()
-        .delay(200)
+        .delay(delay_ms)
         .duration(duration_ms)
         .style("opacity", 1)
       );
@@ -173,7 +182,7 @@ stack_folders = function() {
     .style("z-index", function() { return d3.select(this).attr("data-z-index") })
     .style("bottom", function() { return d3.select(this).attr("data-bottom") });
   
-  if (screen_width < 850) {
+  if (screen_width < small_screen_width) {
     // If we're on a small screen, move all folders to the center of the screen
     // and "stack" them.
     folders
@@ -187,6 +196,8 @@ stack_folders = function() {
   } else {
     // If we're on a large screen, re-set to the folders' wide-screen positions
     folders
+      // We don't need an updating "data-left", since raising the folder doesn't
+      // change the left-position, so we don't need to record an original left-position.
       .attr("data-bottom", function() { return d3.select(this).attr("data-widescreen-bottom") })
       .style("bottom", function() { return d3.select(this).attr("data-widescreen-bottom") })
       .style("left", function() { return d3.select(this).attr("data-widescreen-left") })
@@ -200,6 +211,10 @@ stack_folders = function() {
 // Re-position the folders whenever the window is re-sized. This is necessary to
 // keep the folder stack in the center of the screen on thin screen widths.
 window.addEventListener("resize", stack_folders);
+
+// Ensures that we stack the folders after all of the content is loaded. Just
+// running `stack_folders()` here won't stack them on mobile for example.
+window.onload = function() { stack_folders() };
 
 // Increase the height of the divider on small screen, prevents the folder stack
 // from hitting the title.
@@ -215,11 +230,11 @@ set_divider_height = function(query) {
 }
 
 // Initialize the divider height and set on change
-max_width = window.matchMedia("(max-width: 850px)");
-set_divider_height(max_width);
+query_screen_width = window.matchMedia(`(max-width: ${small_screen_width}px)`);
+set_divider_height(query_screen_width);
 
-max_width.addEventListener("change", function() {
-  set_divider_height(max_width);
+query_screen_width.addEventListener("change", function() {
+  set_divider_height(query_screen_width);
 });
 ```
 
