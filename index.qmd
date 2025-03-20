@@ -30,12 +30,12 @@ posts_paths <- here::here(posts_directory, dir(posts_directory), "index.qmd")
 href_posts_root <- "https://www.ethansansom.com/"
 
 # Parse the YAML frontmatter of a post at `path` and return a data.frame.
-# Attempts to parse only up to line `n` (default `n = 25` should be sufficient).
-read_post_yaml <- function(path, n = 25) {
+# Attempts to parse only up to line `n` (default `n = 50` should be sufficient).
+read_post_yaml <- function(path, n = 50) {
   lines <- readLines(path, n = n)
   yaml_breaks <- which(lines == "---")
   if (length(yaml_breaks) < 2) {
-    return(out)
+    stop(paste0("File '", path, "' does not contain a YAML fence."))
   }
   out <- data.frame(
     title = "",
