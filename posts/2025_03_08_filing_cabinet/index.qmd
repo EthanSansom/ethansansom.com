@@ -1,7 +1,7 @@
 ---
 title: "Filing Cabinet"
 date: "2025-03-08"
-categories: ["data-viz", "featured]
+categories: ["data-viz", "featured"]
 css: styles.css
 # image: "vlightr_hex.svg"
 smallimage: '<img src="posts/2025_03_08_filing_cabinet/filing_cabinet_small.svg">'
