@@ -39,7 +39,7 @@ format:
     link-external-newwindow: true
     highlight-style: gruvbox # TODO: Customize
 
-exectute:
+execute:
   freeze: true
 
 editor: source
